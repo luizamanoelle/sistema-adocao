@@ -16,7 +16,7 @@ O sistema permite:
 
 ##  Tecnologias Utilizadas
 ### Frontend
-- Vue.js 3
+- React + Vite + TailwindCSS + DaisyUI
 
 ### Backend ?
 ---
