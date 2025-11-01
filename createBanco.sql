@@ -37,14 +37,17 @@ create table Usuarios (
 
 
 CREATE TABLE Etapa_Relacao (
-    template_id INT NOT NULL,
-    etapa_id INT NOT NULL,
-    ordem INT NOT NULL,
+	etapa_relacao_id INT PRIMARY KEY AUTO_INCREMENT,
+    template INT NOT NULL,
+    etapa INT NOT NULL,
     responsavel INT NOT NULL,
-    PRIMARY KEY (template_id, etapa_id, ordem), 
-    FOREIGN KEY (template_id) REFERENCES Template(template_id),
-    FOREIGN KEY (etapa_id) REFERENCES Etapas(etapa_id),
-    FOREIGN KEY (responsavel) REFERENCES Tipo_Usuario(tipo_id)
+    proximo INT,
+    alternativo INT,
+    FOREIGN KEY (template) REFERENCES Template(template_id),
+    FOREIGN KEY (etapa) REFERENCES Etapas(etapa_id),
+    FOREIGN KEY (responsavel) REFERENCES Tipo_Usuario(tipo_id),
+    FOREIGN KEY (proximo) REFERENCES Etapa_Relacao(etapa_relacao_id),
+    FOREIGN KEY (alternativo) REFERENCES Etapa_Relacao(etapa_relacao_id)
 );
 
 
@@ -61,15 +64,12 @@ create table Processo (
 create table Processo_Etapa(
 	processo_etapa_id INT PRIMARY KEY AUTO_INCREMENT,
     processo int not null,
-    template int not null,
-    etapa int not null,
-    ordem int not null,
+    etapa_relacao int not null,
     status_ varchar(255) not null,
     usuario int not null,
-	FOREIGN KEY (processo) REFERENCES Processo(processo_id), 
+	FOREIGN KEY (processo) REFERENCES Processo(processo_id) ON DELETE CASCADE, 
     FOREIGN KEY (usuario) REFERENCES Usuarios(usuario_id),
-	FOREIGN KEY (template, etapa, ordem) 
-    REFERENCES Etapa_Relacao (template_id, etapa_id, ordem)
+	FOREIGN KEY (etapa_relacao) REFERENCES Etapa_Relacao (etapa_relacao_id)
 );
 
 
@@ -80,7 +80,7 @@ create table solicitacao (
     animal int not null,
     comprovante_residencia blob,
     FOREIGN KEY (animal) REFERENCES Animais (animal_id),
-    FOREIGN KEY(processo_etapa) REFERENCES Processo_Etapa (processo_etapa_id)
+    FOREIGN KEY(processo_etapa) REFERENCES Processo_Etapa (processo_etapa_id) ON DELETE CASCADE
 );
 
 create table visitacao (
@@ -88,7 +88,7 @@ create table visitacao (
     data_ DATE not null,
     endereco varchar(255) not null,
     processo_etapa int not null,
-	FOREIGN KEY(processo_etapa) REFERENCES Processo_Etapa (processo_etapa_id)
+	FOREIGN KEY(processo_etapa) REFERENCES Processo_Etapa (processo_etapa_id) ON DELETE CASCADE
 );
 
 create table entrevista (
@@ -96,25 +96,21 @@ create table entrevista (
     data_ DATE not null,
     observacoes varchar(255),
     processo_etapa int not null,
-	FOREIGN KEY(processo_etapa) REFERENCES Processo_Etapa (processo_etapa_id)
+	FOREIGN KEY(processo_etapa) REFERENCES Processo_Etapa (processo_etapa_id) ON DELETE CASCADE
 );
 
 create table recusa (
 	recusa_id INT PRIMARY KEY AUTO_INCREMENT,
     justificativa varchar(255),
     processo_etapa int not null,
-	FOREIGN KEY(processo_etapa) REFERENCES Processo_Etapa (processo_etapa_id)
+	FOREIGN KEY(processo_etapa) REFERENCES Processo_Etapa (processo_etapa_id) ON DELETE CASCADE
 );
 
 
 create table validacao (
 	validacao_id INT PRIMARY KEY AUTO_INCREMENT,
     descricao varchar(255),
-    template int not null,
-    etapa int not null,
-    ordem int not null,
-	FOREIGN KEY (template, etapa, ordem) 
-    REFERENCES Etapa_Relacao (template_id, etapa_id, ordem)
+    etapa_relacao int not null,
+	FOREIGN KEY (etapa_relacao) REFERENCES Etapa_Relacao (etapa_relacao_id)
 );
-
 
