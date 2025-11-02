@@ -6,6 +6,7 @@ create table Animais(
     nome varchar(255),
     sexo char(1),
     idade int,
+	foto blob,
     tipo varchar(10)
 );
 
@@ -56,6 +57,7 @@ create table Processo (
 	processo_id int primary key auto_increment,
     template int NOT NULL,
     usuario int NOT NULL,
+	status_ varchar(255) not null,
 	FOREIGN KEY (template) REFERENCES Template(template_id),
 	FOREIGN KEY (usuario) REFERENCES Usuarios(usuario_id)
 );
