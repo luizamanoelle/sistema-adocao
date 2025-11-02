@@ -1,0 +1,110 @@
+create database teste;
+use teste;
+
+create table fila (
+	idFila int primary key auto_increment,
+    prox int null,
+    alternativo int null,
+    foreign key (prox) references fila(idFila),
+    foreign key(alternativo) references fila(idFila)
+);
+
+-- o tempId nao vai ser salvo no banco, ele serve só pro processo de criação, indicando a ordem selecionada no frontend
+set @json_data = '[ 
+	{"tempId":1, "prox":2, "alternativo":null},
+    {"tempId":2, "prox":4, "alternativo": 3},
+    {"tempId":3, "prox":null, "alternativo":null},
+    {"tempId":4, "prox":null, "alternativo":null}
+]';
+
+SET SESSION max_sp_recursion_depth = 255; -- esses comandos servem pra permitir recursão, nao tenho certeza de qual funciona ai deixei os dois kkk
+SET GLOBAL max_sp_recursion_depth = 255; 
+
+drop procedure if exists insereFila;
+drop procedure if exists recursivo;
+
+delimiter &&
+
+-- recebe o elemento a ser criado e retorna o id real dele no banco
+create procedure recursivo (IN prox_ int, OUT nProx int)
+begin
+	declare atualProx int default null; 
+    declare atualAlt int default null;
+
+	-- pega o tempId do elemento desejado e salva seus prox e alternativo
+	select prox, alternativo into atualProx, atualAlt from ffilas where tempId = prox_;
+    
+    -- se o elemento atual tem proximo, entra na recursão e substitui o tempId usado no campo prox pelo id real do próximo criado no banco
+    if(atualProx is not null) then
+		call recursivo(atualProx, @nAtualProx);
+        set atualProx = @nAtualProx;
+	end if;
+    
+    -- se o elemento atual tem alternativo, entra na recursão e substirui o tempId usado no campo alternativo pelo id real do alt criado no banco
+    if(atualAlt is not null) then
+		call recursivo(atualAlt, @nAtualAlt);
+        set atualAlt = @nAtualAlt;
+	end if;
+    
+    -- depois de susbstituir os ids temporarios (se existirem) pelos reais, cria o elemento
+    insert into fila(prox, alternativo) values (atualProx, atualAlt);
+
+	-- retorna o id do ultimo elemento criado (ou seja, esse)
+    select last_insert_id() into nProx;
+        
+end&&
+
+create procedure insereFila(IN json_in json)
+BEGIN
+    declare primeiro integer;
+    declare primeiroProx integer default null;
+    declare primeiroAlt integer default null;
+    
+    drop temporary table if exists ffilas;
+
+	start transaction;
+    -- cria uma tabela temporária a partir do json recebido
+    create temporary table ffilas as
+    select
+		tempId,
+        prox,
+        alternativo
+	from
+		json_table(
+			@json_data,
+            '$[*]' columns (
+				tempId int path '$.tempId',
+				prox int path '$.prox',
+                alternativo int path '$.alternativo'
+			)
+		) as ff;
+    
+    -- seleciona o próximo do primeiro elemento; o elemento inicial PRECISA ter tempId = 1;
+	select prox into primeiro from ffilas where tempId = 1;
+    
+    -- se o primeiro elemento tiver um próximo, inicia a recursão e substitui o valor temporário pelo real
+    if(primeiro is not null) then
+		call recursivo(primeiro, @nProx);
+		set primeiroProx = @nProx;
+	end if;
+    
+	select alternativo into primeiro from ffilas where tempId = 1;
+    
+    -- se o primeiro elemento tiver um alternativo, inicia a recursão e substitui o valor temporário pelo real
+    if(primeiro is not null) then
+		call recursivo(primeiro, @nAlt);
+        set primeiroAlt = @nAlt;
+	end if;
+    
+    -- após ter criado todos os próximos e alternativos, cria o elemento inicial
+    insert into fila(prox, alternativo) values (primeiroProx, primeiroAlt);
+
+	-- destroi a tabela temporária
+    drop temporary table ffilas;
+    commit;
+
+end&&
+delimiter ;
+
+call insereFila(@json_data);
+select * from fila;
