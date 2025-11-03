@@ -16,9 +16,10 @@ O sistema permite:
 
 ##  Tecnologias Utilizadas
 ### Frontend
-- React + Vite + TailwindCSS + DaisyUI
+- React + Vite + TailwindCSS + DaisyUI (JS)
 
 ### Backend ?
+- Django + Python
 ---
 
 ##  Como Rodar o Projeto
@@ -34,24 +35,39 @@ O sistema permite:
    ```bash
    npm run dev
 
-  ##  Como baixar o necessário
+  ## Frontend
 1. Baixar o node: https://nodejs.org/pt
-2. Entra na pasta e instala dependências
-   ```bash
-   cd sistema-adocao
-   npm install
+# entrar na pasta do frontend
+cd frontend
 
-3. Verifique se o vite ta instalado 
-   ```bash
-   vite --version
+# instalar dependências
+npm install
 
-  3.1. Se não tiver instalado:
-  ```bash
-   npm install vite --save-dev
+# rodar o servidor
+npm run dev
 
-4. Instalar Tailwindcss 
-   ```bash
-   npm install tailwindcss @tailwindcss/vite
-5. Instalar DaisyUI
-   ```bash
-   npm i -D daisyui@latest
+ ##  Backend
+ # entrar na pasta do backend
+cd backend
+
+# criar e ativar o ambiente virtual
+```bash
+python -m venv venv
+venv\Scripts\activate     # (Windows)
+# ou
+source venv/bin/activate  # (Linux/Mac)
+
+# instalar dependências
+pip install -r requirements.txt
+
+# rodar o servidor Django
+python manage.py runserver
+
+
+OBS: DENTRO DA PASTA BACKEND CRIE O ARQUIVO .ENV E COLE ISSO:
+
+DB_NAME=sistema_adocao
+DB_USER=root
+DB_PASSWORD=minha_senha_segura
+DB_HOST=localhost
+DB_PORT=3306
