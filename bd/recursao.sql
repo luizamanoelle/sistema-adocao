@@ -4,7 +4,7 @@ drop procedure if exists recursivo;
 delimiter &&
 
 -- recebe o elemento a ser criado e retorna o id real dele no banco
-create procedure recursivo (IN prox_ int, OUT nProx int)
+create procedure recursivo (in prox_ int, out nProx int)
 begin
 	declare atualProx int default null; 
     declare atualAlt int default null;
@@ -41,20 +41,20 @@ begin
 	end if;
 end&&
 
-create procedure insereFila(IN json_in json)
-BEGIN
+create procedure insereFila(in json_in json)
+begin
     declare primeiroProx integer default null;
     declare primeiroAlt integer default null;
     declare primeiroTemplate integer;
     declare primeiroEtapa integer;
     declare primeiroResp integer;
     
-	DECLARE EXIT HANDLER FOR SQLEXCEPTION
-        BEGIN
+	declare EXIT HANDLER for SQLEXCEPTION
+        begin
             -- Rollback if any SQL exception occurs
-            ROLLBACK;
-            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Erro de inserção.';
-        END;
+            rollback;
+            signal sqlstate '45000' sest MESSAGE_TEXT = 'Erro de inserção.';
+        end;
 
     
     drop temporary table if exists ffilas;
