@@ -1,5 +1,5 @@
-create database sistema_adocao;
-use sistema_adocao;
+create database petflow;
+use petflow;
 
 create table Animais(
 	animal_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -23,7 +23,7 @@ create table Template (
 
 create table Tipo_Usuario (
 	tipo_id INT PRIMARY KEY AUTO_INCREMENT,
-	categoria enum('Adotante', 'Administrador', 'voluntário')
+	categoria varchar(255)
 );
 
 create table Usuarios (
@@ -116,3 +116,4 @@ create table validacao (
 	FOREIGN KEY (etapa_relacao) REFERENCES Etapa_Relacao (etapa_relacao_id)
 );
 
+SET GLOBAL max_sp_recursion_depth = 255; 
