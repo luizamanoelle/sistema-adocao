@@ -1,10 +1,10 @@
-drop procedure if exists insereFila;
-drop procedure if exists recursivo;
+drop procedure if exists insereEtapa_Relacao;
+drop procedure if exists insercaoRecursiva;
 
 delimiter &&
 
 -- recebe o elemento a ser criado e retorna o id real dele no banco
-create procedure recursivo (in prox_ int, out nProx int)
+create procedure insercaoRecursiva (in prox_ int, out nProx int)
 begin
 	declare atualProx int default null; 
     declare atualAlt int default null;
@@ -18,13 +18,13 @@ begin
     
     -- se o elemento atual tem proximo, entra na recursão e substitui o tempId usado no campo prox pelo id real do próximo criado no banco
     if(atualProx is not null) then
-		call recursivo(atualProx, @nAtualProx);
+		call insercaoRecursiva(atualProx, @nAtualProx);
         set atualProx = @nAtualProx;
 	end if;
     
     -- se o elemento atual tem alternativo, entra na recursão e substirui o tempId usado no campo alternativo pelo id real do alt criado no banco
     if(atualAlt is not null) then
-		call recursivo(atualAlt, @nAtualAlt);
+		call insercaoRecursiva(atualAlt, @nAtualAlt);
         set atualAlt = @nAtualAlt;
 	end if;
     
@@ -41,7 +41,7 @@ begin
 	end if;
 end&&
 
-create procedure insereFila(in json_in json)
+create procedure insereEtapa_Relacao(in json_in json)
 begin
     declare primeiroProx integer default null;
     declare primeiroAlt integer default null;
@@ -53,7 +53,7 @@ begin
         begin
             -- Rollback if any SQL exception occurs
             rollback;
-            signal sqlstate '45000' sest MESSAGE_TEXT = 'Erro de inserção.';
+            signal sqlstate '45000' set MESSAGE_TEXT = 'Erro na inserção de etapas';
         end;
 
     
@@ -88,14 +88,14 @@ begin
     
     -- se o primeiro elemento tiver um próximo, inicia a recursão e substitui o valor temporário pelo real
     if(primeiroProx is not null) then
-		call recursivo(primeiroProx, @nProx);
+		call insercaoRecursiva(primeiroProx, @nProx);
 		set primeiroProx = @nProx;
 	end if;
     
     
     -- se o primeiro elemento tiver um alternativo, inicia a recursão e substitui o valor temporário pelo real
     if(primeiroAlt is not null) then
-		call recursivo(primeiroAlt, @nAlt);
+		call insercaoRecursiva(primeiroAlt, @nAlt);
         set primeiroAlt = @nAlt;
 	end if;
     
