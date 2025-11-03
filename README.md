@@ -28,6 +28,11 @@ O sistema permite:
    ```bash
    git clone https://github.com/SEU_USUARIO/sistema-adocao.git
    cd sistema-adocao
+### Fronted
+1. Entra na pasta frontend:
+   ```bash
+   cd frontend
+
 2. Instale as dependências:
    ```bash
    npm install
@@ -35,33 +40,27 @@ O sistema permite:
    ```bash
    npm run dev
 
-  ## Frontend
-1. Baixar o node: https://nodejs.org/pt
-# entrar na pasta do frontend
-cd frontend
+### Backend
+1. entrar na pasta do backend
+   ```bash
+   cd frontend
 
-# instalar dependências
-npm install
+2. criar e ativar o ambiente virtual (na IDE)
+   ```bash
+   python -m venv venv
 
-# rodar o servidor
-npm run dev
+3. criar e ativar o ambiente virtual (no terminal dentro da pasta sistema-adocao)
+   ```bash
+   venv\Scripts\activate     # (Windows)
+   source venv/bin/activate  # (Linux/Mac)
 
- ##  Backend
- # entrar na pasta do backend
-cd backend
+4. instalar dependências:
+   ```bash
+   pip install -r requirements.txt
 
-# criar e ativar o ambiente virtual
-```bash
-python -m venv venv
-venv\Scripts\activate     # (Windows)
-# ou
-source venv/bin/activate  # (Linux/Mac)
-
-# instalar dependências
-pip install -r requirements.txt
-
-# rodar o servidor Django
-python manage.py runserver
+5. rodar o servidor Django
+   ```bash
+   python manage.py runserver
 
 
 OBS: DENTRO DA PASTA BACKEND CRIE O ARQUIVO .ENV E COLE ISSO:
