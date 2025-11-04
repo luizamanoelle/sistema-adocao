@@ -69,7 +69,7 @@ create table Processo_Etapa(
     processo int not null,
     etapa_relacao int not null,
     status_ varchar(255) not null,
-    usuario int not null,
+    usuario int null,
 	FOREIGN KEY (processo) REFERENCES Processo(processo_id) ON DELETE CASCADE, 
     FOREIGN KEY (usuario) REFERENCES Usuarios(usuario_id),
 	FOREIGN KEY (etapa_relacao) REFERENCES Etapa_Relacao (etapa_relacao_id)
@@ -117,5 +117,7 @@ create table validacao (
 	FOREIGN KEY (etapa_relacao) REFERENCES Etapa_Relacao (etapa_relacao_id)
 );
 
-SET GLOBAL max_sp_recursion_depth = 255; 
+set session max_sp_recursion_depth = 255; 
 
+insert into Etapas(nome) values ("Solicitação"), ("Análise"), ("Entrevista"), ("Visitação"), ("Aprovação"), ("Recusa"), ("Cancelamento"), ("Conclusão");
+insert into Tipo_Usuario(categoria) values ("Administrador"), ("Adotante"), ("Voluntário");
