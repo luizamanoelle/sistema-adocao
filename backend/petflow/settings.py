@@ -1,5 +1,9 @@
 import os
 from dotenv import load_dotenv
+import pymysql
+
+pymysql.install_as_MySQLdb()
+
 
 load_dotenv()  # carrega as variáveis do .env
 

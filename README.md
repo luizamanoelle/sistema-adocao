@@ -43,7 +43,7 @@ O sistema permite:
 ### Backend
 1. entrar na pasta do backend
    ```bash
-   cd frontend
+   cd backend
 
 2. criar e ativar o ambiente virtual (na IDE)
    ```bash
@@ -65,7 +65,7 @@ O sistema permite:
 
 OBS: DENTRO DA PASTA BACKEND CRIE O ARQUIVO .ENV E COLE ISSO:
 
-DB_NAME=sistema_adocao
+DB_NAME=petflow
 DB_USER=root
 DB_PASSWORD=minha_senha_segura
 DB_HOST=localhost
