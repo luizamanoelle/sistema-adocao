@@ -1,4 +1,6 @@
+import base64
 from rest_framework import serializers
+from rest_framework.fields import Field
 from .models import (
     Animais,
     Entrevista,
@@ -15,49 +17,62 @@ from .models import (
     Visitacao
 )
 
-# Serializer principal para a sua página de pets
+# ---
+# CAMPO SERIALIZER CUSTOMIZADO PARA FOTOS (BLOB -> Base64)
+# ---
+class FotoSerializerField(Field):
+    """
+    Um SerializerField customizado para converter o BLOB (bytes) do banco
+    para uma string Base64 que o <img src=""> do frontend entende.
+    """
+    def to_representation(self, value):
+        if value:
+            # Assume que o mime type é png, mas você pode ajustar
+            # O formato é: data:<mime-type>;base64,<dados-base64>
+            mime_type = "image/png" # Ou jpeg, etc.
+            return f"data:{mime_type};base64,{base64.b64encode(value).decode('utf-8')}"
+        return None
+
+# ---
+# SERIALIZERS PARA CADA MODELO
+# ---
+
 class AnimaisSerializer(serializers.ModelSerializer):
+    """
+    Serializer para Animais.
+    Ele substitui o campo 'foto' padrão pelo nosso campo customizado
+    que faz a conversão para Base64.
+    """
+    # Substitui o campo 'foto' padrão
+    foto = FotoSerializerField(read_only=True)
+
     class Meta:
         model = Animais
         fields = '__all__'
-        # '__all__' é um atalho para incluir todos os campos:
-        # [
-        #   'animal_id', 
-        #   'nome', 
-        #   'sexo', 
-        #   'idade', 
-        #   'foto', 
-        #   'tipo'
-        # ]
 
-
-# --- Serializers para os outros modelos do seu workflow ---
-
-class UsuariosSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Usuarios
-        # Importante! Nunca exponha o campo 'senha' em uma API.
-        fields = [
-            'usuario_id', 
-            'nome', 
-            'idade', 
-            'email', 
-            'tipo_usuario'
-        ]
-
-class TipoUsuarioSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TipoUsuario
-        fields = '__all__'
 
 class EtapasSerializer(serializers.ModelSerializer):
     class Meta:
         model = Etapas
         fields = '__all__'
 
+
+class TipoUsuarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TipoUsuario
+        fields = '__all__'
+
+
 class TemplateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Template
+        fields = '__all__'
+
+
+# (Opcional) Serializers para os outros modelos, caso precise listá-los
+class EntrevistaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Entrevista
         fields = '__all__'
 
 class EtapaRelacaoSerializer(serializers.ModelSerializer):
@@ -75,19 +90,19 @@ class ProcessoEtapaSerializer(serializers.ModelSerializer):
         model = ProcessoEtapa
         fields = '__all__'
 
+class RecusaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recusa
+        fields = '__all__'
+
 class SolicitacaoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Solicitacao
         fields = '__all__'
 
-class EntrevistaSerializer(serializers.ModelSerializer):
+class UsuariosSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Entrevista
-        fields = '__all__'
-
-class RecusaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Recusa
+        model = Usuarios
         fields = '__all__'
 
 class ValidacaoSerializer(serializers.ModelSerializer):

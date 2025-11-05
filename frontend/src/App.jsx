@@ -3,6 +3,7 @@ import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import About from "./pages/About";
 import Pets from "./pages/Pets";
+import TemplateCreator from "./pages/TemplateCreator";
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
         <Route path="/pets" element={<Pets/>} />
+        <Route path="/create-template" element={<TemplateCreator />} />
       </Routes>
     </Router>
   );
