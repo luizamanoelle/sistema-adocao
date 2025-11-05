@@ -41,6 +41,14 @@ export default function Navbar() {
             </Link>
           </li>
           <li>
+            <Link
+              to="/create-template"
+              className="px-4 py-2 !rounded-lg hover:!bg-primary hover:!text-white transition-colors"
+            >
+              Criar Template
+            </Link>
+          </li>
+          <li>
             <details>
               <summary
                 className="px-4 py-2 !rounded-lg hover:!bg-primary hover:!text-white transition-colors"

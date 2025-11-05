@@ -71,7 +71,7 @@ begin
         responsavel
 	from
 		json_table(
-			@json_data,
+			json_in,
             '$[*]' columns (
 				tempId int path '$.tempId',
 				prox int path '$.prox',
@@ -108,4 +108,3 @@ begin
 
 end&&
 delimiter ;
-

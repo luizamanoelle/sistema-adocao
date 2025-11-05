@@ -1,14 +1,12 @@
-import json
-from rest_framework.generics import ListAPIView
+from django.db import connection, transaction
+from django.http import JsonResponse
 from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.db import connection, transaction
-from django.db.utils import IntegrityError, OperationalError
+import json # Importe o JSON
 
-# Importa os modelos
-from .models import Animais, Etapas, TipoUsuario, Template
-# Importa os serializers (o AnimaisSerializer já faz a conversão)
+from .models import Animais, Etapas, TipoUsuario
 from .serializers import (
     AnimaisSerializer, 
     EtapasSerializer, 
@@ -16,124 +14,91 @@ from .serializers import (
 )
 
 # ---
-# VIEWS (ENDPOINTS DA API)
+# API para a lista de Animais (com foto em Base64)
 # ---
-
 class AnimaisListView(ListAPIView):
-    """
-    Endpoint para listar todos os animais.
-    Usa o AnimaisSerializer (de serializers.py) que já converte as fotos.
-    """
     queryset = Animais.objects.all()
-    serializer_class = AnimaisSerializer
+    # Usa o serializer que converte o BLOB da foto para Base64
+    serializer_class = AnimaisSerializer 
 
 # ---
-# NOVAS VIEWS PARA O CRIADOR DE TEMPLATES
+# APIs de Apoio para o Criador de Templates
 # ---
-
 class EtapasListView(ListAPIView):
-    """
-    Endpoint (somente leitura) para listar as Etapas disponíveis
-    (Ex: 1: Solicitação, 2: Análise, etc.)
-    O frontend usa isso para ajudar o usuário a escrever o JSON.
-    """
     queryset = Etapas.objects.all()
     serializer_class = EtapasSerializer
 
+# --- CORREÇÃO AQUI ---
+# Renomeado de TiposUsuarioListView (plural) para TipoUsuarioListView (singular)
 class TipoUsuarioListView(ListAPIView):
-    """
-    Endpoint (somente leitura) para listar os Tipos de Usuário disponíveis
-    (Ex: 1: Administrador, 2: Adotante, etc.)
-    O frontend usa isso para o campo 'responsavel' do JSON.
-    """
     queryset = TipoUsuario.objects.all()
     serializer_class = TipoUsuarioSerializer
 
+# ---
+# API Principal para CRIAR O TEMPLATE
+# ---
 class TemplateCreateView(APIView):
-    """
-    Endpoint principal para CRIAR um novo template e seu fluxo.
-    Este endpoint chama a procedure `insereEtapa_Relacao`
-    """
     
     def post(self, request, *args, **kwargs):
-        # 1. Pega os dados do React
-        nome_template = request.data.get('nome')
-        fluxo_json = request.data.get('fluxo_json') # Espera um objeto/lista Python
+        template_name = request.data.get('nome')
+        fluxo_json = request.data.get('fluxo_json') # Recebe o JSON (como lista de dicts)
 
-        if not nome_template or not fluxo_json:
+        if not template_name or not fluxo_json:
             return Response(
-                {"error": "Os campos 'nome' e 'fluxo_json' são obrigatórios."},
+                {"error": "Nome do template e fluxo_json são obrigatórios."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        new_template_id = None
         try:
-            # 2. Inicia uma transação. Se algo falhar, tudo é desfeito (rollback).
+            # Inicia uma transação: ou tudo funciona, ou nada é salvo.
             with transaction.atomic():
-                
-                # 3. Cria o Template (INSERT na tabela Template)
                 with connection.cursor() as cursor:
-                    cursor.execute(
-                        "INSERT INTO Template (nome) VALUES (%s)", 
-                        [nome_template]
-                    )
-                    # Pega o ID do template que acabamos de criar
+                    
+                    # 1. Cria o Template (pai) e obtém o seu ID
+                    cursor.execute("INSERT INTO Template (nome) VALUES (%s)", [template_name])
                     cursor.execute("SELECT LAST_INSERT_ID()")
                     new_template_id = cursor.fetchone()[0]
 
-                if not new_template_id:
-                    raise IntegrityError("Não foi possível obter o ID do novo template.")
 
-                # 4. Prepara o JSON para a Procedure
-                # A procedure espera que o `template_id` esteja *dentro* do JSON
-                # Vamos injetar o `new_template_id` em cada etapa do fluxo
-                for etapa in fluxo_json:
-                    etapa['template'] = new_template_id
-                
-                # Converte o JSON de Python para String (que o MySQL espera)
-                fluxo_json_string = json.dumps(fluxo_json) # <-- Variável definida corretamente
+                    if not new_template_id:
+                        raise Exception("Não foi possível obter o ID do novo template.")
 
-                # 5. Chama a Procedure `insereEtapa_Relacao`
-                with connection.cursor() as cursor:
+                    # 2. Injeta o new_template_id em CADA etapa do fluxo
+                    for etapa in fluxo_json:
+                        etapa['template'] = new_template_id
+
+                    # 3. Converte o JSON modificado para uma string
+                    flux_json_string = json.dumps(fluxo_json)
+
                     # --- CORREÇÃO AQUI ---
-                    # A procedure espera 1 argumento (o JSON),
-                    # não 0 argumentos com uma variável de sessão.
-                    
-                    # Removemos o cursor.execute("SET @json_data ...")
-                    
-                    # Chamamos a procedure passando a string JSON como argumento
-                    cursor.callproc('insereEtapa_Relacao', [fluxo_json_string])
+                    # Chama a procedure 'insereEtapa_Relacao' e passa 
+                    # a string JSON como o ÚNICO argumento.
+                    cursor.callproc('insereEtapa_Relacao', [flux_json_string])
                     # ---------------------
+                    
+                    # Se chegou aqui, a procedure funcionou
+                    return Response(
+                        {
+                            "message": "Template criado com sucesso!",
+                            "template_id": new_template_id,
+                            "nome": template_name
+                        },
+                        status=status.HTTP_201_CREATED
+                    )
 
-
-            # 6. Se tudo deu certo (commit da transação é automático)
-            return Response(
-                {
-                    "message": "Template e fluxo criados com sucesso!",
-                    "template_id": new_template_id,
-                    "nome": nome_template
-                },
-                status=status.HTTP_201_CREATED
-            )
-
-        except (IntegrityError, OperationalError) as e:
-            # 7. Se algo falhou, a transação é desfeita (rollback)
-            # Retorna a mensagem de erro (pode ser da sua trigger ou procedure!)
+        except Exception as e:
+            # Captura qualquer erro (incluindo o SIGNAL da procedure)
             error_message = str(e)
             
-            # Tenta extrair a mensagem de erro específica do SQL (ex: "Erro: Usuário já possui...")
-            if hasattr(e, 'args') and len(e.args) > 1:
-                # e.args[0] é o código de erro (ex: 1644), e.args[1] é a mensagem
-                sql_error_message = str(e.args[1])
-                error_message = sql_error_message
-            
+            # Tenta extrair a mensagem de erro específica do MySQL
+            if "MESSAGE_TEXT" in error_message:
+                try:
+                    # Extrai a mensagem de erro que definimos no SIGNAL
+                    error_message = error_message.split("MESSAGE_TEXT = '")[1].split("'")[0]
+                except:
+                    pass # Mantém a mensagem original se a extração falhar
+
             return Response(
                 {"error": f"Falha no banco de dados: {error_message}"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        except Exception as e:
-            # Pega qualquer outro erro inesperado
-            return Response(
-                {"error": f"Ocorreu um erro inesperado: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
