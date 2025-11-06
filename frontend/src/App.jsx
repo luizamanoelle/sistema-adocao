@@ -9,7 +9,8 @@ import Pets from "./pages/Pets";
 import TemplateCreator from "./pages/TemplateCreator";
 import Servicos from "./pages/Servicos"; 
 import Login from "./pages/Login";     
-
+import ProcessoEtapaPage from "./pages/ProcessoEtapaPage";
+import MeusProcessosPage from "./pages/MeusProcessosPage"; 
 /**
  * Componente "Protegido"
  * Verifica se o usuário está logado. Se estiver, mostra a página.
@@ -115,7 +116,30 @@ function AppContent() {
           }
         />
         
-        {/* Rota "Não encontrada" (Opcional) */}
+        <Route
+          path="/processo/etapa/:etapaId"
+          element={
+            <ProtectedRoute user={loggedInUser}>
+              <PageLayout>
+                {/* Passa o usuário para a página de etapa */}
+                <ProcessoEtapaPage loggedInUser={loggedInUser} /> 
+              </PageLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/meus-processos"
+          element={
+            <ProtectedRoute user={loggedInUser}>
+              <PageLayout>
+                <MeusProcessosPage loggedInUser={loggedInUser} />
+              </PageLayout>
+            </ProtectedRoute>
+          }
+          />
+        
+        {/* Rota "Não encontrada" (inalterada) */}
         <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>

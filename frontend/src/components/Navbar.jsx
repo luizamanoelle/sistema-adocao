@@ -64,6 +64,14 @@ export default function Navbar({ user, onLogout }) {
               </Link>
             </li>
           )}
+          {/* 2. ADICIONAR LINK NO MENU PRINCIPAL */}
+          {user && (
+            <li>
+              <Link to="/meus-processos" className={linkStyle}>
+                Meus Processos
+              </Link>
+            </li>
+          )}
           {isAdmin && (
             <li>
               <Link to="/create-template" className={linkStyle}>
