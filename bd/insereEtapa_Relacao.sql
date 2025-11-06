@@ -102,7 +102,7 @@ begin
     -- após ter criado todos os próximos e alternativos, cria o elemento inicial
     insert into Etapa_Relacao(proximo, alternativo, template, etapa, responsavel) values (primeiroProx, primeiroAlt, primeiroTemplate, primeiroEtapa, primeiroResp);
 
-	-- destroi a tabela temporária
+	-- destroi a tabela te mporária
     drop temporary table ffilas;
     commit;
 

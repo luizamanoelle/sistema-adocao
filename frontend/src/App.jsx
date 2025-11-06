@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import About from "./pages/About";
 import Pets from "./pages/Pets";
 import TemplateCreator from "./pages/TemplateCreator";
+import Servicos from "./pages/Servicos";
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/about" element={<About />} />
         <Route path="/pets" element={<Pets/>} />
         <Route path="/create-template" element={<TemplateCreator />} />
+        <Route path="/servicos" element={<Servicos />} />
       </Routes>
     </Router>
   );

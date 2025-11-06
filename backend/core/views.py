@@ -6,37 +6,37 @@ from rest_framework.response import Response
 from rest_framework import status
 import json # Importe o JSON
 
-from .models import Animais, Etapas, TipoUsuario
+#aqui importa os modelos
+from .models import Animais, Etapas, TipoUsuario, Template
+
+#aqui importa os serializers
 from .serializers import (
     AnimaisSerializer, 
     EtapasSerializer, 
-    TipoUsuarioSerializer
+    TipoUsuarioSerializer,
+    TemplateSerializer
 )
 
-# ---
-# API para a lista de Animais (com foto em Base64)
-# ---
+
+# API para a lista de Animais 
 class AnimaisListView(ListAPIView):
     queryset = Animais.objects.all()
     # Usa o serializer que converte o BLOB da foto para Base64
     serializer_class = AnimaisSerializer 
 
-# ---
-# APIs de Apoio para o Criador de Templates
-# ---
+
+# APIs de Apoio para o Criador de Templates (etapas)
 class EtapasListView(ListAPIView):
     queryset = Etapas.objects.all()
     serializer_class = EtapasSerializer
 
-# --- CORREÇÃO AQUI ---
-# Renomeado de TiposUsuarioListView (plural) para TipoUsuarioListView (singular)
+
+# APIs de apoio pro criador de templates (usuarios)
 class TipoUsuarioListView(ListAPIView):
     queryset = TipoUsuario.objects.all()
     serializer_class = TipoUsuarioSerializer
 
-# ---
 # API Principal para CRIAR O TEMPLATE
-# ---
 class TemplateCreateView(APIView):
     
     def post(self, request, *args, **kwargs):
@@ -54,6 +54,7 @@ class TemplateCreateView(APIView):
             with transaction.atomic():
                 with connection.cursor() as cursor:
                     
+                    cursor.execute("SET max_sp_recursion_depth = 255;")
                     # 1. Cria o Template (pai) e obtém o seu ID
                     cursor.execute("INSERT INTO Template (nome) VALUES (%s)", [template_name])
                     cursor.execute("SELECT LAST_INSERT_ID()")
@@ -70,12 +71,23 @@ class TemplateCreateView(APIView):
                     # 3. Converte o JSON modificado para uma string
                     flux_json_string = json.dumps(fluxo_json)
 
-                    # --- CORREÇÃO AQUI ---
-                    # Chama a procedure 'insereEtapa_Relacao' e passa 
-                    # a string JSON como o ÚNICO argumento.
-                    cursor.callproc('insereEtapa_Relacao', [flux_json_string])
-                    # ---------------------
+
+                    print("DEBUG: fluxo_json recebido:", fluxo_json)
+                    print("DEBUG: tipo de fluxo_json:", type(fluxo_json))
+                    print("DEBUG: JSON final enviado para o MySQL:", flux_json_string)
+
                     
+                    # 1. Definimos a variável de sessão com o JSON
+                    # O driver do Python/Django vai lidar corretamente com a string aqui.
+                    print("DEBUG: Definindo @json_in com:", flux_json_string[:300])
+                    cursor.execute("SET @json_in = %s", [flux_json_string])
+                    
+                    # 2. Chamamos a procedure usando a variável de sessão
+                    print("DEBUG: Chamando procedure com @json_in...")
+                    cursor.execute("CALL insereEtapa_Relacao(@json_in)")
+                    
+                    print("DEBUG: Procedure executada com sucesso!")
+
                     # Se chegou aqui, a procedure funcionou
                     return Response(
                         {
@@ -102,3 +114,8 @@ class TemplateCreateView(APIView):
                 {"error": f"Falha no banco de dados: {error_message}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+# API pra listas os templates 
+class TemplateListView(ListAPIView):
+    queryset = Template.objects.all()
+    serializer_class = TemplateSerializer

@@ -16,40 +16,39 @@ const IconTrash = () => (
 
 // --- COMPONENTE DE CADA PASSO (ATUALIZADO) ---
 function PassoCard({ passo, index, todosPassos, etapasApi, tiposUsuarioApi, onUpdate, onRemove }) {
-  // Lista de todos os passos *exceto* o atual, para usar nos dropdowns
   const outrosPassos = todosPassos.filter(p => p.tempId !== passo.tempId);
 
-  // Função para encontrar o ID de exibição (1, 2, 3...) de um passo
   const getDisplayId = (tempId) => {
     const passoIndex = todosPassos.findIndex(p => p.tempId === tempId);
     return passoIndex + 1;
   };
+
+  // --- INÍCIO DA ATUALIZAÇÃO (LÓGICA DO NOME) ---
+  // A lógica agora é a mesma para todos os passos (incluindo o index 0).
+  // Ele busca o nome da etapa selecionada no dropdown.
+  const etapaObj = etapasApi.find(e => e.etapa_id == passo.etapaId);
+  
+  // Se não encontrar (ex: API carregando), usa o nome do estado (ex: 'Início (Solicitação)')
+  const nomeExibido = etapaObj ? etapaObj.nome : passo.nomePasso;
+  // --- FIM DA ATUALIZAÇÃO ---
 
   return (
     <div className="card w-full bg-base-100 shadow-lg border border-base-300 relative">
       <div className="card-body p-6">
         <button
           type="button"
+          // O botão de deletar continua escondido apenas para o primeiro passo
           className={`btn btn-xs btn-circle btn-error btn-outline absolute top-2 right-2 ${index === 0 ? 'hidden' : ''}`}
           onClick={() => onRemove(passo.tempId)}
         >
           <IconTrash />
         </button>
 
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text font-bold">Nome deste Passo</span>
-          </label>
-          <input
-            type="text"
-            placeholder="Ex: Análise, Visita"
-            className="input input-bordered"
-            value={passo.nomePasso}
-            onChange={(e) => onUpdate(passo.tempId, 'nomePasso', e.target.value)}
-          />
-        </div>
+        <h2 className="card-title mb-2 text-primary">
+          {nomeExibido}
+        </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Etapa */}
           <div className="form-control">
             <label className="label"><span className="label-text">Etapa</span></label>
@@ -57,7 +56,9 @@ function PassoCard({ passo, index, todosPassos, etapasApi, tiposUsuarioApi, onUp
               className={`select select-bordered ${!passo.etapaId ? 'select-error' : ''}`}
               value={passo.etapaId}
               onChange={(e) => onUpdate(passo.tempId, 'etapaId', e.target.value)}
-              disabled={index === 0}
+              // --- MUDANÇA AQUI ---
+              // Removido: disabled={index === 0}
+              // Agora é editável
             >
               <option value="" disabled>Selecione</option>
               {etapasApi.map(etapa => (
@@ -73,7 +74,9 @@ function PassoCard({ passo, index, todosPassos, etapasApi, tiposUsuarioApi, onUp
               className={`select select-bordered ${!passo.responsavelId ? 'select-error' : ''}`}
               value={passo.responsavelId}
               onChange={(e) => onUpdate(passo.tempId, 'responsavelId', e.target.value)}
-              disabled={index === 0}
+              // --- MUDANÇA AQUI ---
+              // Removido: disabled={index === 0}
+              // Agora é editável
             >
               <option value="" disabled>Selecione</option>
               {tiposUsuarioApi.map(tipo => (
@@ -82,8 +85,7 @@ function PassoCard({ passo, index, todosPassos, etapasApi, tiposUsuarioApi, onUp
             </select>
           </div>
         </div>
-
-        {/* --- INÍCIO DA ATUALIZAÇÃO (FLUXO) --- */}
+        
         <div className="divider">Fluxo</div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -96,11 +98,16 @@ function PassoCard({ passo, index, todosPassos, etapasApi, tiposUsuarioApi, onUp
               onChange={(e) => onUpdate(passo.tempId, 'proxId', e.target.value || null)}
             >
               <option value="">Nenhum (Fim do Fluxo)</option>
-              {outrosPassos.map(p => (
-                <option key={p.tempId} value={p.tempId}>
-                  Passo {getDisplayId(p.tempId)}: {p.nomePasso}
-                </option>
-              ))}
+              {outrosPassos.map(p => {
+                // Tenta encontrar o nome da etapa para exibir no dropdown
+                const etapaPasso = etapasApi.find(e => e.etapa_id == p.etapaId);
+                const nomePasso = etapaPasso ? etapaPasso.nome : p.nomePasso;
+                return (
+                  <option key={p.tempId} value={p.tempId}>
+                    Passo {getDisplayId(p.tempId)}: {nomePasso}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -113,22 +120,26 @@ function PassoCard({ passo, index, todosPassos, etapasApi, tiposUsuarioApi, onUp
               onChange={(e) => onUpdate(passo.tempId, 'alternativoId', e.target.value || null)}
             >
               <option value="">Nenhum (Sem Alternativa)</option>
-              {outrosPassos.map(p => (
-                <option key={p.tempId} value={p.tempId}>
-                  Passo {getDisplayId(p.tempId)}: {p.nomePasso}
-                </option>
-              ))}
+              {outrosPassos.map(p => {
+                 // Tenta encontrar o nome da etapa para exibir no dropdown
+                const etapaPasso = etapasApi.find(e => e.etapa_id == p.etapaId);
+                const nomePasso = etapaPasso ? etapaPasso.nome : p.nomePasso;
+                return (
+                  <option key={p.tempId} value={p.tempId}>
+                    Passo {getDisplayId(p.tempId)}: {nomePasso}
+                  </option>
+                );
+              })}
             </select>
           </div>
         </div>
-        {/* --- FIM DA ATUALIZAÇÃO --- */}
 
       </div>
     </div>
   );
 }
 
-// --- COMPONENTE PRINCIPAL ---
+// --- COMPONENTE PRINCIPAL (Nenhuma mudança necessária aqui) ---
 function TemplateCreator() {
   const [templateName, setTemplateName] = useState('');
   const [passos, setPassos] = useState([]);
@@ -159,26 +170,28 @@ function TemplateCreator() {
   }, []);
 
   // Adicionar e remover passos
+  // A lógica de 'handleAddPasso' está CORRETA.
+  // Ela define os padrões (ID 1 e 2) para o primeiro passo.
+  // Como o PassoCard não está mais 'disabled', o usuário pode alterar se quiser.
   const handleAddPasso = () => {
     const newPasso = {
       tempId: crypto.randomUUID(),
-      nomePasso: 'Novo Passo',
+      nomePasso: 'Novo Passo', // Para passos > 0, isso será substituído pelo nome da etapa
       etapaId: '',
       responsavelId: '',
-      proxId: null, // Controlado pelo novo dropdown
-      alternativoId: null, // Controlado pelo novo dropdown
+      proxId: null, 
+      alternativoId: null,
     };
     if (passos.length === 0) {
-      newPasso.nomePasso = 'Início (Solicitação)';
-      newPasso.etapaId = '1'; // Ex: ID '1' é 'Solicitação'
-      newPasso.responsavelId = '2'; // Ex: ID '2' é 'Solicitante'
+      newPasso.nomePasso = 'Início (Solicitação)'; // Usado como fallback
+      newPasso.etapaId = '1'; // Padrão: Solicitação
+      newPasso.responsavelId = '2'; // Padrão: Adotante
     }
     setPassos([...passos, newPasso]);
   };
 
   const handleRemovePasso = (tempId) => {
     const novosPassos = passos.filter(p => p.tempId !== tempId);
-    // Limpa referências a este passo que foi excluído
     const passosAtualizados = novosPassos.map(p => {
       if (p.proxId === tempId) p.proxId = null;
       if (p.alternativoId === tempId) p.alternativoId = null;
@@ -191,7 +204,7 @@ function TemplateCreator() {
     setPassos(passos.map(p => p.tempId === tempId ? { ...p, [field]: value } : p));
   };
 
-  // --- SUBMISSÃO (ATUALIZADA) ---
+  // SUBMISSÃO (Nenhuma mudança necessária)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -204,51 +217,40 @@ function TemplateCreator() {
       setLoading(false);
       return;
     }
-
     if (passos.length === 0) {
       setError("Adicione pelo menos um passo ao fluxo.");
       setLoading(false);
       return;
     }
-
-    // Validação de campos
     for (const [index, passo] of passos.entries()) {
       if (!passo.etapaId || !passo.responsavelId) {
-        setError(`O Passo ID ${index + 1} ("${passo.nomePasso}") está incompleto (falta Etapa ou Responsável).`);
+         // Atualiza a mensagem de erro para usar o nome da etapa
+        const etapaObj = etapasApi.find(e => e.etapa_id == passo.etapaId);
+        const nomePasso = etapaObj ? etapaObj.nome : passo.nomePasso;
+        setError(`O Passo ID ${index + 1} ("${nomePasso}") está incompleto (falta Etapa ou Responsável).`);
         setLoading(false);
         return;
       }
     }
-
-    // --- GERAÇÃO DO JSON CORRIGIDA ---
-
-    // 1. O backend espera IDs sequenciais (1, 2, 3...), mas o frontend usa
-    //    UUIDs (em passo.tempId) para gerenciar o estado.
-    //    Este 'Map' faz a tradução de UUID -> ID Sequencial.
+    
     const uuidParaTempId = new Map();
     passos.forEach((passo, index) => {
       uuidParaTempId.set(passo.tempId, index + 1);
     });
 
-    // 2. Mapeamos os passos para o formato final
     const jsonParaBackend = passos.map((passo, index) => {
-      // Usamos o 'Map' para encontrar o ID sequencial correspondente
-      // ao UUID que está salvo em 'proxId' e 'alternativoId'
       const proxTempId = passo.proxId ? (uuidParaTempId.get(passo.proxId) || null) : null;
       const alternativoTempId = passo.alternativoId ? (uuidParaTempId.get(passo.alternativoId) || null) : null;
 
-      // Retorna o objeto na ORDEM de chaves que você especificou
       return {
-        tempId: index + 1, // O ID sequencial deste passo
+        tempId: index + 1, 
         prox: proxTempId,
         alternativo: alternativoTempId,
         etapa: parseInt(passo.etapaId),
         responsavel: parseInt(passo.responsavelId)
       };
     });
-    // --- FIM DA ALTERAÇÃO ---
-
-
+   
     console.log("JSON Gerado para enviar:", jsonParaBackend);
     setDebugJson(JSON.stringify(jsonParaBackend, null, 2));
 
@@ -270,7 +272,7 @@ function TemplateCreator() {
     }
   };
 
-  // --- RENDERIZAÇÃO ---
+  // --- RENDERIZAÇÃO (Nenhuma mudança necessária) ---
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-5xl">
       <h1 className="text-3xl font-bold mb-6">Criar Novo Template</h1>

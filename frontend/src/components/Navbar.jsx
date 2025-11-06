@@ -48,23 +48,12 @@ export default function Navbar() {
               Criar Template
             </Link>
           </li>
-          <li>
-            <details>
-              <summary
-                className="px-4 py-2 !rounded-lg hover:!bg-primary hover:!text-white transition-colors"
-              >
-                Serviços
-              </summary>
-              <ul className="p-2 bg-base-100 rounded-box">
-                {/* Aqui dentro não precisa do '!', pois 
-                  eles não estão *diretamente* dentro do .menu 
-                */}
-                <li><a className="hover:bg-primary hover:text-white rounded-lg">Adotar Cão</a></li>
-                <li><a className="hover:bg-primary hover:text-white rounded-lg">Adotar Gato</a></li>
-                <li><a className="hover:bg-primary hover:text-white rounded-lg">Lar Temporário</a></li>
-              </ul>
-            </details>
-          </li>
+          <Link
+              to="/servicos"
+              className="px-4 py-2 !rounded-lg hover:!bg-primary hover:!text-white transition-colors"
+            >
+              Serviços
+            </Link>
         </ul>
       </div>
 
