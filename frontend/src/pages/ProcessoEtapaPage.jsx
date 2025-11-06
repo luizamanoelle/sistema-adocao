@@ -49,6 +49,7 @@ export default function ProcessoEtapaPage({ loggedInUser }) {
 
     // --- Verificação de Permissão ---
     // Verifica se o usuário logado é o responsável por esta etapa
+    // (etapaDetalhes.usuario é o dono atual da etapa, ex: Admin)
     const isOwner = etapaDetalhes.usuario.usuario_id === loggedInUser.usuario_id;
 
     if (!isOwner) {
@@ -154,6 +155,7 @@ const toBase64 = file => new Promise((resolve, reject) => {
 
 /**
  * Formulário específico para a etapa de "Solicitação"
+ * (Inalterado)
  */
 function FormSolicitacao({ etapaDetalhes, loggedInUser }) {
   const navigate = useNavigate();
@@ -296,7 +298,7 @@ function FormSolicitacao({ etapaDetalhes, loggedInUser }) {
 
 /**
  * Formulário específico para a etapa de "Análise"
- * Este é um formulário de decisão (Aprovar/Recusar)
+ * (Este formulário foi CORRIGIDO)
  */
 function FormAnalise({ etapaDetalhes }) {
   const navigate = useNavigate();
@@ -309,6 +311,8 @@ function FormAnalise({ etapaDetalhes }) {
   
   // Pega os dados da solicitação (que a API agora envia)
   const dadosSolicitacao = etapaDetalhes.dados_solicitacao;
+  // Pega os dados do solicitante (que a API agora envia)
+  const solicitante = etapaDetalhes.solicitante; 
 
   /**
    * Função genérica para encaminhar o processo
@@ -337,18 +341,22 @@ function FormAnalise({ etapaDetalhes }) {
   return (
     <div className="space-y-4">
       <h2 className="card-title">Formulário de Análise</h2>
-      <p>Você está analisando a solicitação de <strong>{dadosSolicitacao?.animal?.nome || '...'}</strong>. Por favor, revise os dados e tome uma decisão.</p>
+      <p>Você está analisando a solicitação de <strong>{solicitante?.nome || '...'}</strong>. Por favor, revise os dados e tome uma decisão.</p>
       
       {/* --- Exibe os dados da Solicitação --- */}
       {dadosSolicitacao ? (
         <div className="p-4 bg-base-200 rounded-lg space-y-2">
           <h3 className="font-bold">Dados da Solicitação:</h3>
-          <p><strong>Solicitante:</strong> {dadosSolicitacao.animal.nome}</p>
+          
+          {/* --- CORREÇÃO DO BUG DE DIGITAÇÃO --- */}
+          <p><strong>Solicitante:</strong> {solicitante?.nome || 'N/A'}</p>
+          <p><strong>Email:</strong> {solicitante?.email || 'N/A'}</p>
           <p><strong>CPF:</strong> {dadosSolicitacao.cpf}</p>
           <p><strong>Animal:</strong> {dadosSolicitacao.animal.nome} ({dadosSolicitacao.animal.tipo})</p>
+          
           <a 
             href={dadosSolicitacao.comprovante_residencia} 
-            download={`comprovante_${dadosSolicitacao.cpf}.png`} // Sugere um nome de arquivo
+            download={`comprovante_${solicitante?.nome.split(' ')[0]}_${dadosSolicitacao.cpf}.png`}
             className="btn btn-sm btn-outline btn-secondary"
             target="_blank" 
             rel="noopener noreferrer"
@@ -401,6 +409,7 @@ function FormAnalise({ etapaDetalhes }) {
 
 /**
  * Formulário específico para a etapa de "Recusa"
+ * (Inalterado)
  */
 function FormRecusa({ etapaDetalhes }) {
   const navigate = useNavigate();

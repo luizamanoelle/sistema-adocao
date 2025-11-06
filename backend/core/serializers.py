@@ -21,10 +21,34 @@ from .models import (
 # CAMPO SERIALIZER CUSTOMIZADO PARA FOTOS (BLOB -> Base64)
 # ---
 class FotoSerializerField(Field):
+    """
+    Converte BLOB (bytes) do banco para uma string Base64 
+    que o <img src=""> ou <a href=""> do frontend entende.
+    """
     def to_representation(self, value):
         if value:
-            mime_type = "image/png"
-            return f"data:{mime_type};base64,{base64.b64encode(value).decode('utf-8')}"
+            # Tenta decodificar como imagem. Se falhar, assume que é PDF.
+            try:
+                decoded_value = base64.b64encode(value).decode('utf-8')
+                # Tenta PNG
+                mime_type = "image/png"
+                if not decoded_value.startswith('iVBOR'):
+                    # Tenta JPG
+                    if decoded_value.startswith('/9j/'):
+                        mime_type = "image/jpeg"
+                    else:
+                        # Assume PDF se não for imagem conhecida
+                        # (O frontend lidará com 'data:application/pdf;base64,...')
+                        mime_type = "application/pdf"
+                
+                return f"data:{mime_type};base64,{decoded_value}"
+            except Exception:
+                # Fallback para PDF se a decodificação falhar
+                try:
+                    decoded_value = base64.b64encode(value).decode('utf-8')
+                    return f"data:application/pdf;base64,{decoded_value}"
+                except Exception:
+                    return None
         return None
 
 # ---
@@ -78,13 +102,21 @@ class TemplateSerializer(serializers.ModelSerializer):
 
 
 # ---
-# SERIALIZERS PARA A PÁGINA DE ETAPA
+# SERIALIZERS PARA A PÁGINA DE ETAPA (DETALHES)
 # ---
 
+# 1. ATUALIZADO: SolicitacaoSerializer agora é read-only e mais detalhado
 class SolicitacaoSerializer(serializers.ModelSerializer):
+    """
+    Serializer para a tabela 'solicitacao'.
+    Usado para mostrar os dados na Análise.
+    """
+    comprovante_residencia = FotoSerializerField(read_only=True)
+    animal = AnimaisSerializer(read_only=True)
+
     class Meta:
         model = Solicitacao
-        fields = ['animal', 'cpf', 'comprovante_residencia'] 
+        fields = ['solicitacao_id', 'animal', 'cpf', 'comprovante_residencia'] 
 
 
 class EtapaRelacaoSimplesSerializer(serializers.ModelSerializer):
@@ -114,24 +146,53 @@ class EtapaRelacaoDetalhadaSerializer(serializers.ModelSerializer):
         fields = ['etapa_relacao_id', 'etapa', 'responsavel', 'proximo', 'alternativo']
 
 
+# 2. ATUALIZADO: ProcessoEtapaDetalhadoSerializer (causa do bug de "loading")
 class ProcessoEtapaDetalhadoSerializer(serializers.ModelSerializer):
     """
     O serializer principal da página.
     Ele puxa o ProcessoEtapa e todos os seus detalhes aninhados.
     """
     etapa_relacao = EtapaRelacaoDetalhadaSerializer(read_only=True)
-    usuario = UsuariosSerializer(read_only=True) 
+    usuario = UsuariosSerializer(read_only=True) # <-- O dono ATUAL da etapa (ex: Admin)
+    
+    # Adiciona o usuário que CRIOU o processo
+    solicitante = UsuariosSerializer(source='processo.usuario', read_only=True)
+    
+    # Adiciona os dados do formulário de solicitação
+    dados_solicitacao = serializers.SerializerMethodField()
 
     class Meta:
         model = ProcessoEtapa
-        fields = ['processo_etapa_id', 'processo', 'status_field', 'etapa_relacao', 'usuario']
+        fields = [
+            'processo_etapa_id', 
+            'processo', 
+            'status_field', 
+            'etapa_relacao', 
+            'usuario', 
+            'solicitante', # <-- Adicionado
+            'dados_solicitacao'
+        ]
+
+    def get_dados_solicitacao(self, obj):
+        """
+        Busca os dados da 'solicitacao' associados a este processo.
+        """
+        try:
+            # Encontra a solicitação que pertence ao mesmo processo
+            solicitacao = Solicitacao.objects.get(processo_etapa__processo=obj.processo)
+            return SolicitacaoSerializer(solicitacao).data
+        except Solicitacao.DoesNotExist:
+            return None # Processo não tem solicitação (ou lógica falhou)
+        except Solicitacao.MultipleObjectsReturned:
+            solicitacao = Solicitacao.objects.filter(processo_etapa__processo=obj.processo).first()
+            return SolicitacaoSerializer(solicitacao).data
 
 
 # ---
 # SERIALIZERS PARA A PÁGINA "MEUS PROCESSOS" (ORDEM CORRIGIDA)
 # ---
 
-# 1. ProcessoEtapaSimplesSerializer (DEFINIDO PRIMEIRO)
+# 3. CORREÇÃO DE ORDEM: ProcessoEtapaSimplesSerializer (DEFINIDO PRIMEIRO)
 class ProcessoEtapaSimplesSerializer(serializers.ModelSerializer):
     """
     Serializer 'super-simples' para a lista de processos.
@@ -145,7 +206,7 @@ class ProcessoEtapaSimplesSerializer(serializers.ModelSerializer):
         fields = ['processo_etapa_id', 'etapa_nome', 'usuario_nome', 'status_field']
 
 
-# 2. ProcessoListSerializer (DEFINIDO DEPOIS, AGORA PODE USAR O DE CIMA)
+# 4. CORREÇÃO DE ORDEM: ProcessoListSerializer (DEFINIDO DEPOIS)
 class ProcessoListSerializer(serializers.ModelSerializer):
     """
     Serializer para a lista "Meus Processos".
@@ -168,3 +229,7 @@ class ProcessoListSerializer(serializers.ModelSerializer):
             return ProcessoEtapaSimplesSerializer(etapa).data
         except ProcessoEtapa.DoesNotExist:
             return None
+        except ProcessoEtapa.MultipleObjectsReturned:
+            # Caso raro de duas etapas "Em Andamento"
+            etapa = ProcessoEtapa.objects.filter(processo=obj, status_field='Em Andamento').latest('processo_etapa_id')
+            return ProcessoEtapaSimplesSerializer(etapa).data
