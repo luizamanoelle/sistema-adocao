@@ -7,7 +7,8 @@ from core.views import (
     EtapasListView, 
     TipoUsuarioListView, 
     TemplateCreateView,
-    TemplateListView
+    TemplateListView,
+    LoginView,
 )
 
 urlpatterns = [
@@ -31,5 +32,8 @@ urlpatterns = [
     path('api/templates/create/', TemplateCreateView.as_view(), name='template-create'),
 
     # GET /api/templates/
-    path('api/templates/', TemplateListView.as_view(), name='template-list')
+    path('api/templates/', TemplateListView.as_view(), name='template-list'),
+
+    path('api/login/', LoginView.as_view(), name='login'),
+
 ]

@@ -17,9 +17,7 @@ from .models import (
     Visitacao
 )
 
-# ---
-# CAMPO SERIALIZER CUSTOMIZADO PARA FOTOS (BLOB -> Base64)
-# ---
+
 class FotoSerializerField(Field):
     """
     Um SerializerField customizado para converter o BLOB (bytes) do banco
@@ -33,10 +31,7 @@ class FotoSerializerField(Field):
             return f"data:{mime_type};base64,{base64.b64encode(value).decode('utf-8')}"
         return None
 
-# ---
 # SERIALIZERS PARA CADA MODELO
-# ---
-
 class AnimaisSerializer(serializers.ModelSerializer):
     """
     Serializer para Animais.
@@ -64,10 +59,33 @@ class TipoUsuarioSerializer(serializers.ModelSerializer):
 
 
 class TemplateSerializer(serializers.ModelSerializer):
+    """inclui um campo 'responsavel_primeira_etapa' que
+    busca no banco qual o tipo de usuário pode iniciar este template.
+    """
+    responsavel_primeira_etapa = serializers.SerializerMethodField()
+
     class Meta:
         model = Template
-        fields = '__all__'
+        # Adiciona o novo campo ao 'fields'
+        fields = ['template_id', 'nome', 'responsavel_primeira_etapa']
 
+    def get_responsavel_primeira_etapa(self, obj):
+        """
+        Esta função é chamada para cada template.
+        Ela busca a "primeira etapa" (baseado na sua trigger, é a MAX(id))
+        e retorna o ID do responsável por ela.
+        """
+        try:
+            # Lógica baseada em tg_Processo_criacaoProcesso_Etapa.sql
+            # Pega a Etapa_Relacao com o MAIOR ID para este template
+            primeira_etapa = EtapaRelacao.objects.filter(
+                template=obj
+            ).latest('etapa_relacao_id')
+            
+            # Retorna o ID do tipo de usuário (ex: 1, 2, ou 3)
+            return primeira_etapa.responsavel.tipo_id
+        except EtapaRelacao.DoesNotExist:
+            return None
 
 # (Opcional) Serializers para os outros modelos, caso precise listá-los
 class EntrevistaSerializer(serializers.ModelSerializer):
@@ -101,9 +119,17 @@ class SolicitacaoSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class UsuariosSerializer(serializers.ModelSerializer):
+    """
+    Serializer para Usuarios, usado no Login.
+    Importante: não inclui a senha no retorno.
+    """
+    # Pega o 'tipo_usuario' (ID) e 'tipo_usuario.categoria' (Nome)
+    tipo_usuario_detalhes = TipoUsuarioSerializer(source='tipo_usuario', read_only=True)
+    
     class Meta:
         model = Usuarios
-        fields = '__all__'
+        # Retorna apenas campos seguros
+        fields = ['usuario_id', 'nome', 'email', 'tipo_usuario', 'tipo_usuario_detalhes']
 
 class ValidacaoSerializer(serializers.ModelSerializer):
     class Meta:

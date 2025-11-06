@@ -7,14 +7,15 @@ from rest_framework import status
 import json # Importe o JSON
 
 #aqui importa os modelos
-from .models import Animais, Etapas, TipoUsuario, Template
+from .models import Animais, Etapas, TipoUsuario, Template, Usuarios
 
 #aqui importa os serializers
 from .serializers import (
     AnimaisSerializer, 
     EtapasSerializer, 
     TipoUsuarioSerializer,
-    TemplateSerializer
+    TemplateSerializer,
+    UsuariosSerializer
 )
 
 
@@ -117,5 +118,41 @@ class TemplateCreateView(APIView):
 
 # API pra listas os templates 
 class TemplateListView(ListAPIView):
+
     queryset = Template.objects.all()
     serializer_class = TemplateSerializer
+
+class LoginView(APIView):
+    """
+    View de Login simples.
+    Recebe 'email' e 'senha' e retorna os dados do usuário.
+    """
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        senha = request.data.get('senha')
+
+        if not email or not senha:
+            return Response(
+                {"error": "Email e senha são obrigatórios."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # ATENÇÃO: Isso é inseguro para produção (senha em texto plano)
+            # Mas funciona para o seu schema de banco atual.
+            usuario = Usuarios.objects.get(email=email, senha=senha)
+            
+            # Usa o serializer para retornar dados seguros
+            serializer = UsuariosSerializer(usuario)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Usuarios.DoesNotExist:
+            return Response(
+                {"error": "Credenciais inválidas."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Erro no servidor: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
