@@ -18,7 +18,7 @@ class Animais(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'animais'
+        db_table = 'Animais'
 
 
 class AuthGroup(models.Model):
@@ -156,7 +156,7 @@ class EtapaRelacao(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'etapa_relacao'
+        db_table = 'Etapa_Relacao'
 
 
 class Etapas(models.Model):
@@ -165,7 +165,7 @@ class Etapas(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'etapas'
+        db_table = 'Etapas'
 
 
 class Processo(models.Model):
@@ -176,7 +176,7 @@ class Processo(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'processo'
+        db_table = 'Processo'
 
 
 class ProcessoEtapa(models.Model):
@@ -188,7 +188,7 @@ class ProcessoEtapa(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'processo_etapa'
+        db_table = 'Processo_Etapa'
 
 
 class Recusa(models.Model):
@@ -219,7 +219,7 @@ class Template(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'template'
+        db_table = 'Template'
 
 
 class TipoUsuario(models.Model):
@@ -228,7 +228,7 @@ class TipoUsuario(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'tipo_usuario'
+        db_table = 'Tipo_Usuario'
 
 
 class Usuarios(models.Model):
@@ -241,7 +241,7 @@ class Usuarios(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'usuarios'
+        db_table = 'Usuarios'
 
 
 class Validacao(models.Model):
