@@ -38,7 +38,6 @@ class FotoSerializerField(Field):
                         mime_type = "image/jpeg"
                     else:
                         # Assume PDF se não for imagem conhecida
-                        # (O frontend lidará com 'data:application/pdf;base64,...')
                         mime_type = "application/pdf"
                 
                 return f"data:{mime_type};base64,{decoded_value}"
@@ -105,12 +104,8 @@ class TemplateSerializer(serializers.ModelSerializer):
 # SERIALIZERS PARA A PÁGINA DE ETAPA (DETALHES)
 # ---
 
-# 1. ATUALIZADO: SolicitacaoSerializer agora é read-only e mais detalhado
+# Serializer para a tabela 'solicitacao' (read-only)
 class SolicitacaoSerializer(serializers.ModelSerializer):
-    """
-    Serializer para a tabela 'solicitacao'.
-    Usado para mostrar os dados na Análise.
-    """
     comprovante_residencia = FotoSerializerField(read_only=True)
     animal = AnimaisSerializer(read_only=True)
 
@@ -118,24 +113,63 @@ class SolicitacaoSerializer(serializers.ModelSerializer):
         model = Solicitacao
         fields = ['solicitacao_id', 'animal', 'cpf', 'comprovante_residencia'] 
 
+# Serializer para salvar a Recusa (write-only)
+class RecusaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Recusa
+        fields = ['justificativa', 'processo_etapa']
+
+class EntrevistaSerializer(serializers.ModelSerializer):
+    # data_field = serializers.DateField(source='data_') <-- LINHA REMOVIDA
+    
+    class Meta:
+        model = Entrevista
+        fields = ['data_field', 'observacoes', 'processo_etapa']
+
+# Serializer para salvar a Visitacao (write-only)
+class VisitacaoSerializer(serializers.ModelSerializer):
+    # data_field = serializers.DateField(source='data_') <-- LINHA REMOVIDA
+
+    class Meta:
+        model = Visitacao
+        fields = ['data_field', 'endereco', 'processo_etapa']
+
+# ---
+# CORREÇÃO: ReadOnly Serializers para a "Análise Genérica"
+# ---
+class EntrevistaReadOnlySerializer(serializers.ModelSerializer):
+    """
+    Serializer de LEITURA para a Entrevista. 
+    Usado para mostrar os dados na etapa de Análise.
+    """
+    # data_field = serializers.DateField(source='data_') <-- LINHA REMOVIDA
+    class Meta:
+        model = Entrevista
+        fields = ['data_field', 'observacoes']
+
+class VisitacaoReadOnlySerializer(serializers.ModelSerializer):
+    """
+    Serializer de LEITURA para a Visitação.
+    Usado para mostrar os dados na etapa de Análise.
+    """
+    # data_field = serializers.DateField(source='data_') <-- LINHA REMOVIDA
+    class Meta:
+        model = Visitacao
+        fields = ['data_field', 'endereco']
+
 
 class EtapaRelacaoSimplesSerializer(serializers.ModelSerializer):
-    """
-    Serializer 'raso' para mostrar os detalhes dos botões 
-    'proximo' e 'alternativo'.
-    """
     etapa = EtapasSerializer(read_only=True) 
-    
     class Meta:
         model = EtapaRelacao
         fields = ['etapa_relacao_id', 'etapa']
 
+class ValidacaoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Validacao
+        fields = ['validacao_id', 'descricao']
 
 class EtapaRelacaoDetalhadaSerializer(serializers.ModelSerializer):
-    """
-    Serializer 'profundo' que mostra os detalhes COMPLETOS 
-    de uma EtapaRelacao, incluindo seus filhos.
-    """
     etapa = EtapasSerializer(read_only=True)
     responsavel = TipoUsuarioSerializer(read_only=True)
     proximo = EtapaRelacaoSimplesSerializer(read_only=True) 
@@ -146,20 +180,16 @@ class EtapaRelacaoDetalhadaSerializer(serializers.ModelSerializer):
         fields = ['etapa_relacao_id', 'etapa', 'responsavel', 'proximo', 'alternativo']
 
 
-# 2. ATUALIZADO: ProcessoEtapaDetalhadoSerializer (causa do bug de "loading")
+# Serializer principal da página de detalhes da etapa
 class ProcessoEtapaDetalhadoSerializer(serializers.ModelSerializer):
-    """
-    O serializer principal da página.
-    Ele puxa o ProcessoEtapa e todos os seus detalhes aninhados.
-    """
     etapa_relacao = EtapaRelacaoDetalhadaSerializer(read_only=True)
-    usuario = UsuariosSerializer(read_only=True) # <-- O dono ATUAL da etapa (ex: Admin)
-    
-    # Adiciona o usuário que CRIOU o processo
+    usuario = UsuariosSerializer(read_only=True)
     solicitante = UsuariosSerializer(source='processo.usuario', read_only=True)
     
-    # Adiciona os dados do formulário de solicitação
+    # Adiciona os dados dos formulários de etapas anteriores
     dados_solicitacao = serializers.SerializerMethodField()
+    dados_entrevista = serializers.SerializerMethodField()
+    dados_visitacao = serializers.SerializerMethodField()
 
     class Meta:
         model = ProcessoEtapa
@@ -169,35 +199,49 @@ class ProcessoEtapaDetalhadoSerializer(serializers.ModelSerializer):
             'status_field', 
             'etapa_relacao', 
             'usuario', 
-            'solicitante', # <-- Adicionado
-            'dados_solicitacao'
+            'solicitante',
+            'dados_solicitacao',
+            'dados_entrevista',
+            'dados_visitacao'
         ]
 
     def get_dados_solicitacao(self, obj):
-        """
-        Busca os dados da 'solicitacao' associados a este processo.
-        """
         try:
-            # Encontra a solicitação que pertence ao mesmo processo
             solicitacao = Solicitacao.objects.get(processo_etapa__processo=obj.processo)
             return SolicitacaoSerializer(solicitacao).data
         except Solicitacao.DoesNotExist:
-            return None # Processo não tem solicitação (ou lógica falhou)
+            return None
         except Solicitacao.MultipleObjectsReturned:
             solicitacao = Solicitacao.objects.filter(processo_etapa__processo=obj.processo).first()
             return SolicitacaoSerializer(solicitacao).data
 
+    def get_dados_entrevista(self, obj):
+        try:
+            entrevista = Entrevista.objects.get(processo_etapa__processo=obj.processo)
+            # Usa o ReadOnlySerializer
+            return EntrevistaReadOnlySerializer(entrevista).data
+        except Entrevista.DoesNotExist:
+            return None
+        except Entrevista.MultipleObjectsReturned:
+            entrevista = Entrevista.objects.filter(processo_etapa__processo=obj.processo).first()
+            return EntrevistaReadOnlySerializer(entrevista).data
+
+    def get_dados_visitacao(self, obj):
+        try:
+            visitacao = Visitacao.objects.get(processo_etapa__processo=obj.processo)
+            # Usa o ReadOnlySerializer
+            return VisitacaoReadOnlySerializer(visitacao).data
+        except Visitacao.DoesNotExist:
+            return None
+        except Visitacao.MultipleObjectsReturned:
+            visitacao = Visitacao.objects.filter(processo_etapa__processo=obj.processo).first()
+            return VisitacaoReadOnlySerializer(visitacao).data
+
 
 # ---
-# SERIALIZERS PARA A PÁGINA "MEUS PROCESSOS" (ORDEM CORRIGIDA)
+# SERIALIZERS PARA A PÁGINA "MEUS PROCESSOS"
 # ---
-
-# 3. CORREÇÃO DE ORDEM: ProcessoEtapaSimplesSerializer (DEFINIDO PRIMEIRO)
 class ProcessoEtapaSimplesSerializer(serializers.ModelSerializer):
-    """
-    Serializer 'super-simples' para a lista de processos.
-    Mostra apenas o nome da etapa e o nome do responsável.
-    """
     etapa_nome = serializers.CharField(source='etapa_relacao.etapa.nome')
     usuario_nome = serializers.CharField(source='usuario.nome', allow_null=True)
 
@@ -205,12 +249,7 @@ class ProcessoEtapaSimplesSerializer(serializers.ModelSerializer):
         model = ProcessoEtapa
         fields = ['processo_etapa_id', 'etapa_nome', 'usuario_nome', 'status_field']
 
-
-# 4. CORREÇÃO DE ORDEM: ProcessoListSerializer (DEFINIDO DEPOIS)
 class ProcessoListSerializer(serializers.ModelSerializer):
-    """
-    Serializer para a lista "Meus Processos".
-    """
     template_nome = serializers.CharField(source='template.nome')
     etapa_atual = serializers.SerializerMethodField()
     usuario = UsuariosSerializer(read_only=True)
@@ -220,16 +259,11 @@ class ProcessoListSerializer(serializers.ModelSerializer):
         fields = ['processo_id', 'template_nome', 'status_field', 'usuario', 'etapa_atual']
 
     def get_etapa_atual(self, obj):
-        """
-        Encontra a etapa que está 'Em Andamento' para este processo.
-        """
         try:
             etapa = ProcessoEtapa.objects.get(processo=obj, status_field='Em Andamento')
-            # Agora o Python já sabe o que é 'ProcessoEtapaSimplesSerializer'
             return ProcessoEtapaSimplesSerializer(etapa).data
         except ProcessoEtapa.DoesNotExist:
             return None
         except ProcessoEtapa.MultipleObjectsReturned:
-            # Caso raro de duas etapas "Em Andamento"
             etapa = ProcessoEtapa.objects.filter(processo=obj, status_field='Em Andamento').latest('processo_etapa_id')
             return ProcessoEtapaSimplesSerializer(etapa).data

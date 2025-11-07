@@ -48,8 +48,6 @@ export default function ProcessoEtapaPage({ loggedInUser }) {
     const nomeEtapa = etapaDetalhes.etapa_relacao.etapa.nome;
 
     // --- Verificação de Permissão ---
-    // Verifica se o usuário logado é o responsável por esta etapa
-    // (etapaDetalhes.usuario é o dono atual da etapa, ex: Admin)
     const isOwner = etapaDetalhes.usuario.usuario_id === loggedInUser.usuario_id;
 
     if (!isOwner) {
@@ -63,23 +61,35 @@ export default function ProcessoEtapaPage({ loggedInUser }) {
     }
     // --- Fim da Verificação ---
 
+    // --- LÓGICA ATUALIZADA ---
+    // Se o nome da etapa for "Análise", use o FormAnalise
+    // (Isso já estava correto no seu arquivo)
+    if (nomeEtapa === "Análise") {
+      return <FormAnalise etapaDetalhes={etapaDetalhes} />;
+    }
+    // --- FIM DA ATUALIZAÇÃO ---
+
     switch (nomeEtapa) {
       case "Solicitação":
         return <FormSolicitacao etapaDetalhes={etapaDetalhes} loggedInUser={loggedInUser} />;
       
-      case "Análise":
-        return <FormAnalise etapaDetalhes={etapaDetalhes} />;
+      // O "case "Análise":" foi tratado acima
+
+      case "Aprovação":
+        return <FormAprovacao etapaDetalhes={etapaDetalhes} />;
 
       case "Recusa":
         return <FormRecusa etapaDetalhes={etapaDetalhes} />;
 
+      case "Entrevista":
+        return <FormEntrevista etapaDetalhes={etapaDetalhes} />;
+
+      case "Visitação":
+        return <FormVisitacao etapaDetalhes={etapaDetalhes} />;
+
       default:
-        return (
-          <div className="text-center p-4 bg-base-200 rounded-lg">
-            <h3 className="font-bold text-lg">Etapa: {nomeEtapa}</h3>
-            <p>Formulário para esta etapa ({nomeEtapa}) ainda não foi construído.</p>
-          </div>
-        );
+        // Formulário para "Conclusão" ou outras etapas
+        return <FormEtapaGenerica etapaDetalhes={etapaDetalhes} />;
     }
   };
 
@@ -155,7 +165,6 @@ const toBase64 = file => new Promise((resolve, reject) => {
 
 /**
  * Formulário específico para a etapa de "Solicitação"
- * (Inalterado)
  */
 function FormSolicitacao({ etapaDetalhes, loggedInUser }) {
   const navigate = useNavigate();
@@ -298,7 +307,7 @@ function FormSolicitacao({ etapaDetalhes, loggedInUser }) {
 
 /**
  * Formulário específico para a etapa de "Análise"
- * (Este formulário foi CORRIGIDO)
+ * (VERSÃO ATUALIZADA - AGORA É GENÉRICO)
  */
 function FormAnalise({ etapaDetalhes }) {
   const navigate = useNavigate();
@@ -309,13 +318,11 @@ function FormAnalise({ etapaDetalhes }) {
   const proximoPasso = etapaDetalhes.etapa_relacao.proximo;
   const passoAlternativo = etapaDetalhes.etapa_relacao.alternativo;
   
-  // Pega os dados da solicitação (que a API agora envia)
-  const dadosSolicitacao = etapaDetalhes.dados_solicitacao;
   // Pega os dados do solicitante (que a API agora envia)
   const solicitante = etapaDetalhes.solicitante; 
 
   /**
-   * Função genérica para encaminhar o processo
+   * Função genérica para encaminhar o processo (inalterada)
    */
   const handleEncaminhar = async (proximaEtapaRelacaoId, tipo) => {
     setLoading(tipo); // Trava o botão clicado
@@ -340,35 +347,13 @@ function FormAnalise({ etapaDetalhes }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="card-title">Formulário de Análise</h2>
-      <p>Você está analisando a solicitação de <strong>{solicitante?.nome || '...'}</strong>. Por favor, revise os dados e tome uma decisão.</p>
+      <h2 className="card-title">Formulário de {etapaDetalhes.etapa_relacao.etapa.nome}</h2>
+      <p>Você está analisando a etapa anterior de <strong>{solicitante?.nome || '...'}</strong>. Por favor, revise os dados e tome uma decisão.</p>
       
-      {/* --- Exibe os dados da Solicitação --- */}
-      {dadosSolicitacao ? (
-        <div className="p-4 bg-base-200 rounded-lg space-y-2">
-          <h3 className="font-bold">Dados da Solicitação:</h3>
-          
-          {/* --- CORREÇÃO DO BUG DE DIGITAÇÃO --- */}
-          <p><strong>Solicitante:</strong> {solicitante?.nome || 'N/A'}</p>
-          <p><strong>Email:</strong> {solicitante?.email || 'N/A'}</p>
-          <p><strong>CPF:</strong> {dadosSolicitacao.cpf}</p>
-          <p><strong>Animal:</strong> {dadosSolicitacao.animal.nome} ({dadosSolicitacao.animal.tipo})</p>
-          
-          <a 
-            href={dadosSolicitacao.comprovante_residencia} 
-            download={`comprovante_${solicitante?.nome.split(' ')[0]}_${dadosSolicitacao.cpf}.png`}
-            className="btn btn-sm btn-outline btn-secondary"
-            target="_blank" 
-            rel="noopener noreferrer"
-          >
-            Ver/Baixar Comprovante
-          </a>
-        </div>
-      ) : (
-        <div className="p-4 bg-base-200 rounded-lg">
-           <span className="loading loading-spinner loading-xs"></span> Carregando dados da solicitação...
-        </div>
-      )}
+      {/* --- Exibe os dados da Etapa Anterior (LÓGICA CORRIGIDA) --- */}
+      <RenderDadosAnteriores 
+        etapa={etapaDetalhes} 
+      />
 
 
       {error && (
@@ -377,14 +362,14 @@ function FormAnalise({ etapaDetalhes }) {
         </div>
       )}
 
-      {/* Ações (Botões de Decisão) */}
+      {/* Ações (Botões de Decisão) - (inalterado) */}
       <div className="card-actions justify-end pt-4 space-x-2">
         
         {/* Botão Alternativo (ex: Recusar) */}
         {passoAlternativo && (
           <button 
             className="btn btn-error btn-outline"
-            disabled={loading || !dadosSolicitacao} // Desabilita se estiver carregando
+            disabled={loading}
             onClick={() => handleEncaminhar(passoAlternativo.etapa_relacao_id, 'alternativo')}
           >
             {loading === 'alternativo' ? <span className="loading loading-spinner-xs"></span> : `Encaminhar para ${passoAlternativo.etapa.nome}`}
@@ -395,7 +380,7 @@ function FormAnalise({ etapaDetalhes }) {
         {proximoPasso && (
           <button 
             className="btn btn-success"
-            disabled={loading || !dadosSolicitacao} // Desabilita se estiver carregando
+            disabled={loading}
             onClick={() => handleEncaminhar(proximoPasso.etapa_relacao_id, 'proximo')}
           >
             {loading === 'proximo' ? <span className="loading loading-spinner-xs"></span> : `Encaminhar para ${proximoPasso.etapa.nome}`}
@@ -406,10 +391,142 @@ function FormAnalise({ etapaDetalhes }) {
   );
 }
 
+/**
+ * Componente Helper ATUALIZADO
+ * Renderiza os dados da etapa anterior com a LÓGICA INVERTIDA
+ */
+function RenderDadosAnteriores({ etapa }) {
+  const { dados_solicitacao, dados_entrevista, dados_visitacao, solicitante } = etapa;
+
+  // LÓGICA INVERTIDA: Checa os dados mais recentes primeiro
+
+  // 1. Se houver dados da VISITAÇÃO (etapa mais avançada)
+  if (dados_visitacao) {
+    return (
+      <div className="p-4 bg-base-200 rounded-lg space-y-2">
+        <h3 className="font-bold">Dados da Visitação:</h3>
+        <p><strong>Data Agendada:</strong> {new Date(dados_visitacao.data_field).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</p>
+        <p><strong>Endereço:</strong> {dados_visitacao.endereco}</p>
+      </div>
+    );
+  }
+
+  // 2. Se houver dados da ENTREVISTA
+  if (dados_entrevista) {
+    return (
+      <div className="p-4 bg-base-200 rounded-lg space-y-2">
+        <h3 className="font-bold">Dados da Entrevista:</h3>
+        <p><strong>Data Agendada:</strong> {new Date(dados_entrevista.data_field).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</p>
+        <p><strong>Observações:</strong> {dados_entrevista.observacoes || '(Nenhuma observação)'}</p>
+      </div>
+    );
+  }
+  
+  // 3. Se houver dados da SOLICITAÇÃO (fallback para "Análise" padrão)
+  if (dados_solicitacao) {
+    return (
+      <div className="p-4 bg-base-200 rounded-lg space-y-2">
+        <h3 className="font-bold">Dados da Solicitação:</h3>
+        <p><strong>Solicitante:</strong> {solicitante?.nome || 'N/A'}</p>
+        <p><strong>Email:</strong> {solicitante?.email || 'N/A'}</p>
+        <p><strong>CPF:</strong> {dados_solicitacao.cpf}</p>
+        <p><strong>Animal:</strong> {dados_solicitacao.animal.nome} ({dados_solicitacao.animal.tipo})</p>
+        <a 
+          href={dados_solicitacao.comprovante_residencia} 
+          download={`comprovante_${solicitante?.nome.split(' ')[0]}_${dados_solicitacao.cpf}.png`}
+          className="btn btn-sm btn-outline btn-secondary"
+          target="_blank" 
+          rel="noopener noreferrer"
+        >
+          Ver/Baixar Comprovante
+        </a>
+      </div>
+    );
+  }
+
+  // 4. Fallback 
+  return (
+    <div className="p-4 bg-base-200 rounded-lg">
+      <p>Nenhum dado da etapa anterior foi encontrado para esta análise.</p>
+    </div>
+  );
+}
+
+
+/**
+ * Formulário específico para a etapa de "Aprovação"
+ */
+function FormAprovacao({ etapaDetalhes }) {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(null);
+  const [error, setError] = useState(null);
+
+  // Pega os detalhes dos botões
+  const proximoPasso = etapaDetalhes.etapa_relacao.proximo;
+  const passoAlternativo = etapaDetalhes.etapa_relacao.alternativo;
+
+  const handleEncaminhar = async (proximaEtapaRelacaoId, tipo) => {
+    setLoading(tipo);
+    setError(null);
+
+    try {
+      // Chama a MESMA API genérica 'EncaminharEtapaView'
+      const response = await axios.post(`${API_BASE_URL}/etapa/encaminhar/`, {
+        processo_etapa_id_atual: etapaDetalhes.processo_etapa_id,
+        proxima_etapa_relacao_id: proximaEtapaRelacaoId
+      });
+
+      alert(response.data.message);
+      navigate('/meus-processos');
+      
+    } catch (err) {
+      console.error("Erro ao encaminhar etapa:", err);
+      setError(err.response?.data?.error || "Ocorreu um erro ao encaminhar a etapa.");
+      setLoading(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <h2 className="card-title">Formulário de Aprovação</h2>
+      <p>Esta é a etapa final de aprovação. Ao confirmar, o processo será encaminhado para a conclusão.</p>
+
+      {error && (
+        <div className="alert alert-error text-sm">
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className="card-actions justify-end pt-4 space-x-2">
+        {/* Botão Alternativo (ex: "Voltar para Análise", se existir no template) */}
+        {passoAlternativo && (
+          <button 
+            className="btn btn-warning btn-outline"
+            disabled={loading}
+            onClick={() => handleEncaminhar(passoAlternativo.etapa_relacao_id, 'alternativo')}
+          >
+            {loading === 'alternativo' ? <span className="loading loading-spinner-xs"></span> : `Voltar para ${passoAlternativo.etapa.nome}`}
+          </button>
+        )}
+
+        {/* Botão Próximo (ex: "Concluir") */}
+        {proximoPasso && (
+          <button 
+            className="btn btn-success"
+            disabled={loading}
+            onClick={() => handleEncaminhar(proximoPasso.etapa_relacao_id, 'proximo')}
+          >
+            {loading === 'proximo' ? <span className="loading loading-spinner-xs"></span> : `Confirmar e Encaminhar para ${proximoPasso.etapa.nome}`}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 /**
  * Formulário específico para a etapa de "Recusa"
- * (Inalterado)
  */
 function FormRecusa({ etapaDetalhes }) {
   const navigate = useNavigate();
@@ -417,7 +534,6 @@ function FormRecusa({ etapaDetalhes }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // TODO: Criar a API 'RecusaSubmitView'
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -430,25 +546,20 @@ function FormRecusa({ etapaDetalhes }) {
     }
 
     try {
-      // (Simulação - A API para isso ainda não foi criada)
-      alert(`API (não criada) chamada com:
-        - processo_etapa_id: ${etapaDetalhes.processo_etapa_id}
-        - justificativa: ${justificativa}
-        - proximo_passo_id: ${etapaDetalhes.etapa_relacao.proximo.etapa_relacao_id}
-      `);
-      
-      // Simula a chamada
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // TODO: Criar a API POST /api/etapa/recusa/submit/
-      // 1. Salvar na tabela 'recusa'
-      // 2. Encaminhar para o próximo passo ('Conclusão')
+      // Chama a nova API 'RecusaSubmitView'
+      const response = await axios.post(`${API_BASE_URL}/etapa/recusa/submit/`, {
+        processo_etapa_id: etapaDetalhes.processo_etapa_id,
+        justificativa: justificativa,
+        proximo_etapa_relacao_id: etapaDetalhes.etapa_relacao.proximo.etapa_relacao_id
+      });
       
       setLoading(false);
+      alert(response.data.message);
       navigate('/meus-processos');
 
     } catch (err) {
-      setError("Erro ao submeter recusa.");
+      console.error("Erro ao submeter recusa:", err);
+      setError(err.response?.data?.error || "Erro ao submeter recusa.");
       setLoading(false);
     }
   };
@@ -456,7 +567,7 @@ function FormRecusa({ etapaDetalhes }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <h2 className="card-title text-error">Formulário de Recusa</h2>
-      <p>Você está recusando este processo. Por favor, insira a justificativa abaixo. Isso será salvo no banco de dados.</p>
+      <p>Você está recusando este processo. Por favor, insira a justificativa abaixo. Isso será salvo na tabela `recusa`.</p>
       
       <div className="form-control">
         <label className="label"><span className="label-text">Justificativa da Recusa</span></label>
@@ -482,6 +593,250 @@ function FormRecusa({ etapaDetalhes }) {
           disabled={loading}
         >
           {loading ? <span className="loading loading-spinner-xs"></span> : `Confirmar Recusa e Encaminhar para ${etapaDetalhes.etapa_relacao.proximo.etapa.nome}`}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * Componente genérico para etapas sem formulário (ex: Conclusão)
+ */
+function FormEtapaGenerica({ etapaDetalhes }) {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null); // Adicionado estado de erro
+
+  const handleConcluir = async () => {
+    setLoading(true);
+    setError(null); // Limpa erros antigos
+
+    try {
+      // Chama a nova API que criamos no backend
+      const response = await axios.post(`${API_BASE_URL}/processo/concluir/`, {
+        processo_etapa_id: etapaDetalhes.processo_etapa_id
+      });
+      
+      setLoading(false);
+      alert(response.data.message); // Ex: "Processo concluído com sucesso!"
+      navigate("/meus-processos");
+
+    } catch (err) {
+      console.error("Erro ao concluir processo:", err);
+      setError(err.response?.data?.error || "Ocorreu um erro ao finalizar o processo.");
+      setLoading(false);
+    }
+  }
+
+  // Se não houver próximo passo, é o FIM do fluxo
+  if (!etapaDetalhes.etapa_relacao.proximo) {
+    return (
+      <div className="space-y-4 text-center">
+        <h2 className="card-title justify-center text-success">Processo Concluído!</h2>
+        <p>Este processo foi finalizado.</p>
+
+        {/* Exibe o erro, se houver */}
+        {error && (
+          <div className="alert alert-error text-sm">
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="card-actions justify-center pt-4">
+           <button className="btn btn-success" onClick={handleConcluir} disabled={loading}>
+             {loading ? <span className="loading loading-spinner-xs"></span> : "Finalizar e Voltar"}
+           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // (O resto da sua lógica para etapas genéricas que TÊM um próximo passo)
+  return (
+    <div className="space-y-4">
+      <h2 className="card-title">Etapa: {etapaDetalhes.etapa_relacao.etapa.nome}</h2>
+      <p>Esta é uma etapa genérica. Clique para avançar.</p>
+       <div className="card-actions justify-end pt-4">
+        <button className="btn btn-primary" disabled>
+          Encaminhar para {etapaDetalhes.etapa_relacao.proximo.etapa.nome}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+
+// ---
+// NOVOS FORMULÁRIOS DE ETAPA
+// ---
+
+/**
+ * Formulário específico para a etapa de "Entrevista"
+ */
+function FormEntrevista({ etapaDetalhes }) {
+  const navigate = useNavigate();
+  const [data, setData] = useState('');
+  const [observacoes, setObservacoes] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    if (!data) {
+      setError("A data é obrigatória.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Chama a nova API 'EntrevistaSubmitView'
+      const response = await axios.post(`${API_BASE_URL}/etapa/entrevista/submit/`, {
+        processo_etapa_id: etapaDetalhes.processo_etapa_id,
+        data_: data,
+        observacoes: observacoes || null, // Permite observações nulas
+        proximo_etapa_relacao_id: etapaDetalhes.etapa_relacao.proximo.etapa_relacao_id
+      });
+      
+      setLoading(false);
+      alert(response.data.message);
+      navigate('/meus-processos');
+
+    } catch (err) {
+      console.error("Erro ao submeter entrevista:", err);
+      // Aqui captura o erro do trigger (ex: "Data já reservada")
+      setError(err.response?.data?.error || "Erro ao submeter entrevista.");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <h2 className="card-title">Formulário de Entrevista</h2>
+      <p>Por favor, agende a data da entrevista. As observações são opcionais.</p>
+      
+      <div className="form-control">
+        <label className="label"><span className="label-text">Data da Entrevista</span></label>
+        <input
+          type="date"
+          className="input input-bordered"
+          value={data}
+          onChange={(e) => setData(e.target.value)}
+        />
+      </div>
+
+      <div className="form-control">
+        <label className="label"><span className="label-text">Observações (Opcional)</span></label>
+        <textarea
+          className="textarea textarea-bordered h-24"
+          placeholder="Ex: Entrevista realizada online, candidato parece apto..."
+          value={observacoes}
+          onChange={(e) => setObservacoes(e.target.value)}
+        ></textarea>
+      </div>
+
+      {error && (
+        <div className="alert alert-error text-sm">
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className="card-actions justify-end pt-4">
+        <button 
+          type="submit" 
+          className="btn btn-primary"
+          disabled={loading}
+        >
+          {loading ? <span className="loading loading-spinner-xs"></span> : `Agendar e Encaminhar para ${etapaDetalhes.etapa_relacao.proximo.etapa.nome}`}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * Formulário específico para a etapa de "Visitação"
+ */
+function FormVisitacao({ etapaDetalhes }) {
+  const navigate = useNavigate();
+  const [data, setData] = useState('');
+  const [endereco, setEndereco] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    if (!data || !endereco) {
+      setError("Data e Endereço são obrigatórios.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Chama a nova API 'VisitacaoSubmitView'
+      const response = await axios.post(`${API_BASE_URL}/etapa/visitacao/submit/`, {
+        processo_etapa_id: etapaDetalhes.processo_etapa_id,
+        data_: data,
+        endereco: endereco,
+        proximo_etapa_relacao_id: etapaDetalhes.etapa_relacao.proximo.etapa_relacao_id
+      });
+      
+      setLoading(false);
+      alert(response.data.message);
+      navigate('/meus-processos');
+
+    } catch (err) {
+      console.error("Erro ao submeter visitação:", err);
+      // Aqui captura o erro do trigger (ex: "Data já reservada")
+      setError(err.response?.data?.error || "Erro ao submeter visitação.");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <h2 className="card-title">Formulário de Visitação</h2>
+      <p>Por favor, agende a data e o endereço da visitação.</p>
+      
+      <div className="form-control">
+        <label className="label"><span className="label-text">Data da Visitação</span></label>
+        <input
+          type="date"
+          className="input input-bordered"
+          value={data}
+          onChange={(e) => setData(e.target.value)}
+        />
+      </div>
+
+      <div className="form-control">
+        <label className="label"><span className="label-text">Endereço da Visitação</span></label>
+        <input
+          type="text"
+          className="input input-bordered"
+          placeholder="Ex: Rua dos Bobos, 0"
+          value={endereco}
+          onChange={(e) => setEndereco(e.target.value)}
+        />
+      </div>
+
+      {error && (
+        <div className="alert alert-error text-sm">
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className="card-actions justify-end pt-4">
+        <button 
+          type="submit" 
+          className="btn btn-primary"
+          disabled={loading}
+        >
+          {loading ? <span className="loading loading-spinner-xs"></span> : `Agendar e Encaminhar para ${etapaDetalhes.etapa_relacao.proximo.etapa.nome}`}
         </button>
       </div>
     </form>

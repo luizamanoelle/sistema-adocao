@@ -10,10 +10,14 @@ from core.views import (
     TemplateListView,
     LoginView,
     ProcessoStartView,
-    ProcessoEtapaDetailView, # <-- 1. IMPORTAR A NOVA VIEW DE DETALHE
+    ProcessoEtapaDetailView,
     SolicitacaoSubmitView,
     ProcessoListView,
-    EncaminharEtapaView
+    EncaminharEtapaView,
+    RecusaSubmitView,
+    ProcessoConcluirView,
+    EntrevistaSubmitView, # <-- IMPORTAR
+    VisitacaoSubmitView  # <-- IMPORTAR
 )
 
 urlpatterns = [
@@ -51,4 +55,12 @@ urlpatterns = [
     path('api/processos/meus/', ProcessoListView.as_view(), name='processo-list'),
 
     path('api/etapa/encaminhar/', EncaminharEtapaView.as_view(), name='etapa-encaminhar'),
+
+    path('api/etapa/recusa/submit/', RecusaSubmitView.as_view(), name='recusa-submit'),
+
+    path('api/processo/concluir/', ProcessoConcluirView.as_view(), name='processo-concluir'),
+
+    # --- ADICIONAR AS NOVAS ROTAS ---
+    path('api/etapa/entrevista/submit/', EntrevistaSubmitView.as_view(), name='entrevista-submit'),
+    path('api/etapa/visitacao/submit/', VisitacaoSubmitView.as_view(), name='visitacao-submit'),
 ]
