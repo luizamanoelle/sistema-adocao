@@ -2,42 +2,42 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 function Pets() {
-    // Estado para guardar a lista de pets vinda da API
+    // estado para guardar a lista de pets vinda da API
     const [pets, setPets] = useState([]);
     
-    // Estado para controlar o spinner de carregamento
+    // estado para controlar o spinner de carregamento
     const [loading, setLoading] = useState(true);
     
-    // Estado para guardar qualquer erro da API
+    // estado para guardar qualquer erro da API
     const [error, setError] = useState(null);
 
     // useEffect é usado para buscar os dados assim que o componente é montado
     useEffect(() => {
-        // URL da sua API Django (confira se a porta está correta)
+        // URL da sua API Django 
         const API_URL = 'http://127.0.0.1:8000/api/animais/';
 
         const fetchPets = async () => {
             try {
-                // Tenta buscar os dados da API
+                // tenta buscar os dados da API
                 const response = await axios.get(API_URL);
-                // Salva os dados no estado 'pets'
+                // salva os dados no estado 'pets'
                 setPets(response.data);
             } catch (err) {
-                // Em caso de erro, salva a mensagem no estado 'error'
+                // em caso de erro, salva a mensagem no estado 'error'
                 console.error("Erro ao buscar os pets:", err);
                 setError("Não foi possível carregar os pets. Tente novamente mais tarde.");
             } finally {
-                // Independentemente de sucesso ou erro, para de carregar
+                // independentemente de sucesso ou erro, para de carregar
                 setLoading(false);
             }
         };
 
-        // Chama a função de busca
+        //chama a função de busca
         fetchPets();
 
-    }, []); // O array vazio [] significa que este efeito roda apenas uma vez
+    }, []); // o array vazio [] significa que este efeito roda apenas uma vez
 
-    // 1. Renderização do estado de CARREGAMENTO
+    // renderização do estado de carregamento (a bolinha na tela)
     if (loading) {
         return (
             <div className="flex justify-center items-center h-screen">
@@ -46,7 +46,7 @@ function Pets() {
         );
     }
 
-    // 2. Renderização do estado de ERRO
+    // renderização do estado de erro
     if (error) {
         return (
             <div className="container mx-auto p-4">
@@ -58,7 +58,7 @@ function Pets() {
         );
     }
     
-    // 3. Renderização de estado VAZIO (sem pets no banco)
+    // renderização de estado vazio (quando ta sem animais cadastrados no banco)
     if (pets.length === 0) {
         return (
              <div className="container mx-auto p-4">
@@ -70,7 +70,7 @@ function Pets() {
         );
     }
 
-    // 4. Renderização de SUCESSO (com a lista de pets)
+    // renderização com os pets cadastrados
     return (
         <div className="bg-base-200 min-h-screen p-8">
             <div className="container mx-auto">
@@ -85,11 +85,11 @@ function Pets() {
                         <div key={pet.animal_id} className="card w-full bg-base-100 shadow-xl transition-transform duration-300 hover:scale-105">
                             <figure className="h-60">
                                 <img 
-                                    // Usa o campo 'foto' do seu modelo
+                                    // usa o campo 'foto' do seu modelo
                                     src={pet.foto} 
                                     alt={pet.nome}
                                     className="h-full w-full object-cover" 
-                                    // Adiciona um fallback simples em caso de erro na imagem
+                                    // adiciona um fallback simples em caso de erro na imagem
                                     onError={(e) => { e.target.onerror = null; e.target.src='https://placehold.co/400x300/F0F0F0/AAA?text=Pet'; }}
                                 />
                             </figure>
@@ -111,16 +111,9 @@ function Pets() {
                                         {pet.sexo === 'M' ? 'Macho' : (pet.sexo === 'F' ? 'Fêmea' : 'Sexo desconhecido')}
                                     </div>
                                 </div>
-
-                                <div className="card-actions justify-center mt-6">
-                                    <button className="btn btn-primary btn-wide">
-                                        Quero Adotar
-                                    </button>
-                                </div>
                             </div>
                         </div>
-                    ))}
-                    
+                    ))} 
                 </div>
             </div>
         </div>

@@ -1,4 +1,3 @@
-// src/pages/About.jsx
 import { Link } from "react-router-dom"; 
 
 export default function About() {
@@ -8,6 +7,7 @@ export default function About() {
       className="min-h-screen flex justify-center items-center bg-cover bg-center p-4 relative"
       style={{ backgroundImage: "url(/about.png)" }}
     >
+      {/** textos em card separados pra conseguir deixar mais bonito na tela**/}
       <div className="card w-full max-w-2xl p-6 absolute bottom-60 right-250">
         <div className="card-body text-center">
 

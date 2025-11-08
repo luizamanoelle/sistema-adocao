@@ -121,3 +121,8 @@ set session max_sp_recursion_depth = 255;
 
 insert into Etapas(nome) values ("Solicitação"), ("Análise"), ("Entrevista"), ("Visitação"), ("Aprovação"), ("Recusa"), ("Cancelamento"), ("Conclusão");
 insert into Tipo_Usuario(categoria) values ("Administrador"), ("Adotante"), ("Voluntário");
+
+ALTER TABLE solicitacao
+MODIFY COLUMN comprovante_residencia LONGBLOB;
+
+ALTER TABLE Animais MODIFY foto LONGBLOB;

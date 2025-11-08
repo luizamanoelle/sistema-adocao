@@ -20,44 +20,43 @@ from .models import (
 # ---
 # CAMPO SERIALIZER CUSTOMIZADO PARA FOTOS (BLOB -> Base64)
 # ---
-class FotoSerializerField(Field):
-    """
-    Converte BLOB (bytes) do banco para uma string Base64 
-    que o <img src=""> ou <a href=""> do frontend entende.
-    """
+class FotoSerializerField(serializers.Field):
+    """Converte BLOB (bytes) em Base64 para exibir no frontend"""
     def to_representation(self, value):
         if value:
-            # Tenta decodificar como imagem. Se falhar, assume que é PDF.
             try:
-                decoded_value = base64.b64encode(value).decode('utf-8')
-                # Tenta PNG
-                mime_type = "image/png"
-                if not decoded_value.startswith('iVBOR'):
-                    # Tenta JPG
-                    if decoded_value.startswith('/9j/'):
-                        mime_type = "image/jpeg"
-                    else:
-                        # Assume PDF se não for imagem conhecida
-                        mime_type = "application/pdf"
-                
-                return f"data:{mime_type};base64,{decoded_value}"
-            except Exception:
-                # Fallback para PDF se a decodificação falhar
-                try:
-                    decoded_value = base64.b64encode(value).decode('utf-8')
-                    return f"data:application/pdf;base64,{decoded_value}"
-                except Exception:
-                    return None
+                # Converte o blob (bytes) para Base64
+                encoded = base64.b64encode(value).decode('utf-8')
+                # Retorna no formato que o <img src=""> entende
+                return f"data:image/jpeg;base64,{encoded}"
+            except Exception as e:
+                print("Erro ao converter imagem:", e)
+                return None
         return None
+
+    def to_internal_value(self, data):
+        """
+        Converte uma imagem em Base64 vinda do frontend para bytes (para salvar no banco)
+        """
+        try:
+            if data.startswith('data:image'):
+                header, encoded = data.split(',', 1)
+                return base64.b64decode(encoded)
+            return None
+        except Exception as e:
+            print("Erro ao decodificar imagem:", e)
+            return None
+
 
 # ---
 # SERIALIZERS DE APOIO
 # ---
 class AnimaisSerializer(serializers.ModelSerializer):
-    foto = FotoSerializerField(read_only=True)
+    foto = FotoSerializerField(required=False)
+
     class Meta:
         model = Animais
-        fields = '__all__'
+        fields = ['animal_id', 'nome', 'sexo', 'idade', 'tipo', 'foto']
 
 class EtapasSerializer(serializers.ModelSerializer):
     class Meta:

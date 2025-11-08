@@ -44,8 +44,22 @@ from .serializers import (
 # API 1: Listar Animais
 # ---
 class AnimaisListView(ListAPIView):
-    queryset = Animais.objects.all()
-    serializer_class = AnimaisSerializer 
+     def get(self, request):
+        animais = Animais.objects.all()
+        data = []
+        for a in animais:
+            foto_base64 = None
+            if a.foto:
+                foto_base64 = base64.b64encode(a.foto).decode('utf-8')
+            data.append({
+                'animal_id': a.animal_id,
+                'nome': a.nome,
+                'sexo': a.sexo,
+                'idade': a.idade,
+                'tipo': a.tipo,
+                'foto': f"data:image/jpeg;base64,{foto_base64}" if foto_base64 else None
+            })
+        return JsonResponse(data, safe=False)
 
 # ---
 # API 2: Listar Etapas (para o TemplateCreator)

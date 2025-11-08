@@ -15,12 +15,13 @@ function Login({ onLogin }) {
     setLoading(true);
     setError(null);
 
+    //aqui ele conecta c a api de login
     try {
       const response = await axios.post(`${API_BASE_URL}/login/`, {
         email,
         senha,
       });
-      // --- IMPORTANTE ---
+
       // Chama a função do App.jsx para atualizar o estado global
       onLogin(response.data);
       // (O App.jsx vai cuidar do redirecionamento)
@@ -33,7 +34,7 @@ function Login({ onLogin }) {
     }
   };
 
-  // (O resto do seu JSX do formulário de login...)
+  // visualmente
   return (
     <div className="hero">
       <div className="hero-content flex-col lg:flex-row-reverse">
@@ -47,6 +48,7 @@ function Login({ onLogin }) {
               <label className="label">
                 <span className="label-text">Email</span>
               </label>
+              {/*pega o email*/}
               <input
                 type="email"
                 placeholder="email@exemplo.com"
@@ -60,6 +62,7 @@ function Login({ onLogin }) {
               <label className="label">
                 <span className="label-text">Senha</span>
               </label>
+              {/*pega a senha*/}
               <input
                 type="password"
                 placeholder="senha"

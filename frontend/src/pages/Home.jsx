@@ -1,4 +1,3 @@
-// src/pages/Home.jsx
 import { Link } from "react-router-dom"; 
 
 export default function Home() {
@@ -8,7 +7,7 @@ export default function Home() {
       className="min-h-screen flex justify-end items-end bg-cover bg-center p-4"
       style={{ backgroundImage: "url(/home2.png)" }}
     >
-      {/* card */}
+      {/* card com textinho */}
       <div className="card w-full max-w-md bg-opacity-100 
                    absolute bottom-40 right-40">
         <div className="card-body items-center text-center">
@@ -21,7 +20,7 @@ export default function Home() {
             solicitação até a aprovação.
           </p>
 
-          {/* Botão */}
+          {/* botão de ir pra pets */}
           <Link to="/pets" className="btn btn-primary my">
             Pets
           </Link>

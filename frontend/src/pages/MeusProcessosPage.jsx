@@ -23,12 +23,14 @@ const IconXCircle = () => (
   </svg>
 );
 
+//recebe o usuario logado
 export default function MeusProcessosPage({ loggedInUser }) {
-  const [processos, setProcessos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const navigate = useNavigate();
+  const [processos, setProcessos] = useState([]); //lista de processos retornados pela api
+  const [loading, setLoading] = useState(true); 
+  const [error, setError] = useState(null); 
+  const navigate = useNavigate(); //redireciona p outras pages
 
+  //busca de processos
   useEffect(() => {
     if (!loggedInUser) return;
 
@@ -36,12 +38,13 @@ export default function MeusProcessosPage({ loggedInUser }) {
       setLoading(true);
       setError(null);
       try {
-        // Chama a nova API, passando o ID do usuário logado
+        // Chama a api que controla os processos, passando o ID do usuário logado
         const response = await axios.get(`${API_BASE_URL}/processos/meus/`, {
           params: {
             usuario_id: loggedInUser.usuario_id
           }
         });
+        //armazena o resultado
         setProcessos(response.data);
       } catch (err) {
         console.error("Erro ao buscar processos:", err);
@@ -52,10 +55,13 @@ export default function MeusProcessosPage({ loggedInUser }) {
     };
 
     fetchProcessos();
-  }, [loggedInUser]); // Roda sempre que o usuário mudar
+  }, [loggedInUser]); // roda sempre que o usuário mudar
 
+
+  //pega um processo e retorna o icone, texto e desc de acordo com seu status
   const getStatusInfo = (processo) => {
     const status = processo.status_field;
+    //se tiver em andamento mostra o icon de relogio, qual a prox etapa e responsavel
     if (status === 'Em Andamento') {
       return { 
         icon: <IconClock />, 
@@ -63,10 +69,11 @@ export default function MeusProcessosPage({ loggedInUser }) {
         details: `Próxima Etapa: ${processo.etapa_atual.etapa_nome} (com ${processo.etapa_atual.usuario_nome || 'N/A'})`
       };
     }
+    //se concluido icon de check e descrição de concluido
     if (status === 'Concluído') {
       return { icon: <IconCheckCircle />, text: 'Concluído', details: 'O processo foi finalizado com sucesso.' };
     }
-    // (Assumindo que 'Cancelado' ou 'Recusado' são os outros status)
+    // assumindo que 'Cancelado' ou 'Recusado' são os outros status
     return { icon: <IconXCircle />, text: status, details: 'O processo foi encerrado.' };
   };
 
@@ -76,7 +83,7 @@ export default function MeusProcessosPage({ loggedInUser }) {
       alert("Aguarde. Esta etapa está sendo executada por outro usuário.");
       return;
     }
-    // Navega para a página da etapa
+    // se ele for o responsavel redireciona pra etapa 
     navigate(`/processo/etapa/${processo.etapa_atual.processo_etapa_id}`);
   };
 
@@ -108,6 +115,7 @@ export default function MeusProcessosPage({ loggedInUser }) {
         </div>
       )}
 
+{/*tabela de demonstração de processos*/}
       <div className="overflow-x-auto">
         <table className="table table-zebra w-full bg-base-100 shadow-lg rounded-lg">
           <thead>
@@ -126,10 +134,12 @@ export default function MeusProcessosPage({ loggedInUser }) {
               
               return (
                 <tr key={processo.processo_id} className="hover">
+                  {/*pega o nome do processo*/}
                   <td>
                     <div className="font-bold">{processo.template_nome}</div>
                     <div className="text-sm opacity-50">ID: {processo.processo_id}</div>
                   </td>
+                  {/*pega o nome da pessoa que iniciou*/}
                   <td>{processo.usuario.nome}</td>
                   <td>
                     <div className="flex items-center gap-2">
@@ -137,6 +147,7 @@ export default function MeusProcessosPage({ loggedInUser }) {
                       <span className="font-semibold">{statusInfo.text}</span>
                     </div>
                   </td>
+                  {/*pega o status do processo*/}
                   <td>{statusInfo.details}</td>
                   <td>
                     <button 
