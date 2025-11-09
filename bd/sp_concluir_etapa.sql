@@ -1,13 +1,17 @@
 DROP PROCEDURE IF EXISTS sp_concluir_etapa;
 
 DELIMITER $$
-CREATE PROCEDURE sp_concluir_etapa(IN p_processo_etapa_id INT)
+
+CREATE PROCEDURE sp_concluir_etapa(
+    IN p_processo_etapa_id INT,
+    IN p_proximo_etapa_relacao_id_escolhido INT -- Pode ser o 'proximo' ou o 'alternativo'
+)
 BEGIN
     -- Declaração de todas as variáveis
     DECLARE v_current_processo_id INT;
     DECLARE v_current_usuario_id INT;
     DECLARE v_current_etapa_relacao_id INT;
-    DECLARE v_proximo_etapa_relacao_id INT;
+    DECLARE v_proximo_etapa_relacao_id INT; 
     DECLARE v_current_responsavel_tipo_id INT;
     DECLARE v_proximo_responsavel_tipo_id INT;
     DECLARE v_current_responsavel_nome VARCHAR(255);
@@ -37,17 +41,16 @@ BEGIN
         WHERE processo_etapa_id = p_processo_etapa_id;
 
  
-        SELECT 
-            proximo, responsavel
-        INTO 
-            v_proximo_etapa_relacao_id, v_current_responsavel_tipo_id
-        FROM 
-            Etapa_Relacao 
-        WHERE 
-            etapa_relacao_id = v_current_etapa_relacao_id;
+        -- MUDANÇA 2: Obter o responsável ATUAL e usar o parâmetro para o PRÓXIMO
+        SELECT responsavel
+        INTO v_current_responsavel_tipo_id
+        FROM Etapa_Relacao 
+        WHERE etapa_relacao_id = v_current_etapa_relacao_id;
+        
+        SET v_proximo_etapa_relacao_id = p_proximo_etapa_relacao_id_escolhido;
             
         IF v_proximo_etapa_relacao_id IS NULL THEN
-        
+            -- O resto desta seção (lógica de finalização) está CORRETA.
             SELECT e.nome INTO v_nome_etapa_final
             FROM Etapas e
             JOIN Etapa_Relacao er ON e.etapa_id = er.etapa
@@ -66,6 +69,7 @@ BEGIN
             WHERE processo_id = v_current_processo_id;
 
         ELSE
+            -- O resto desta seção (lógica de balanceamento de carga) está CORRETA.
             
             SELECT processo_etapa_id INTO v_proximo_pe_id
             FROM Processo_Etapa
@@ -83,8 +87,6 @@ BEGIN
             FROM Tipo_Usuario WHERE tipo_id = v_proximo_responsavel_tipo_id;
 
             SET v_proximo_usuario_id = NULL; 
-            
-        
             
             -- ---  Pega o Adotante original do Processo
             SELECT usuario INTO v_processo_owner_id
@@ -104,6 +106,7 @@ BEGIN
                 SELECT u.usuario_id INTO v_proximo_usuario_id
                 FROM Usuarios u
                 WHERE u.tipo_usuario = v_proximo_responsavel_tipo_id
+                -- AQUI ESTÁ SUA FUNÇÃO SENDO USADA CORRETAMENTE
                 ORDER BY fn_contar_andamento_usuario(u.usuario_id) ASC
                 LIMIT 1;
 
@@ -112,7 +115,6 @@ BEGIN
             THEN
                 SET v_proximo_usuario_id = v_current_usuario_id;
             
-            -- (Se nenhuma regra se aplicar, v_proximo_usuario_id fica NULL)
             
             END IF;
         
