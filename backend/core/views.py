@@ -257,10 +257,13 @@ class SolicitacaoSubmitView(APIView):
             return Response({"error": "Todos os campos são obrigatórios."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
+            if ',' in comprovante_file_base64:
+                comprovante_file_base64 = comprovante_file_base64.split(',')[1]
+
             comprovante_blob = base64.b64decode(comprovante_file_base64)
 
             with transaction.atomic():
-                # 1. Salva na tabela 'solicitacao'
+                # 1. Salva na tabela 'solicitacao' (Correto)
                 Solicitacao.objects.create(
                     processo_etapa_id=processo_etapa_id,
                     cpf=cpf,
@@ -268,40 +271,34 @@ class SolicitacaoSubmitView(APIView):
                     comprovante_residencia=comprovante_blob
                 )
 
-                # 2. Atualiza a etapa ATUAL ("Solicitação") para "Concluído"
-                etapa_atual = ProcessoEtapa.objects.get(processo_etapa_id=processo_etapa_id)
-                etapa_atual.status_field = 'Concluído'
-                etapa_atual.save()
+                # --- LÓGICA MANUAL REMOVIDA ---
+                # (etapa_atual.save(), proxima_etapa.save(), etc.)
 
-                # 3. Encontra a próxima etapa ("Análise")
-                proxima_etapa = ProcessoEtapa.objects.get(
-                    processo=etapa_atual.processo,
-                    etapa_relacao_id=proximo_etapa_relacao_id
-                )
-                
-                # 4. Atribui o novo responsável (Admin) a esta etapa
-                proxima_etapa.status_field = 'Em Andamento'
-                
-                proximo_responsavel_tipo_id = proxima_etapa.etapa_relacao.responsavel.tipo_id
-                
-                primeiro_usuario_compativel = Usuarios.objects.filter(tipo_usuario_id=proximo_responsavel_tipo_id).first()
-                
-                if not primeiro_usuario_compativel:
-                    raise Exception(f"Nenhum usuário encontrado para o tipo de responsável ID: {proximo_responsavel_tipo_id}")
-
-                proxima_etapa.usuario = primeiro_usuario_compativel
-                proxima_etapa.save()
+                # 2. Chama a procedure para avançar o fluxo
+                with connection.cursor() as cursor:
+                    cursor.callproc(
+                        "sp_concluir_etapa",
+                        [processo_etapa_id, proximo_etapa_relacao_id]
+                    )
 
                 return Response(
-                    {"message": "Solicitação enviada com sucesso!", "next_etapa_id": proxima_etapa.processo_etapa_id},
+                    {"message": "Solicitação enviada com sucesso!"},
                     status=status.HTTP_200_OK
                 )
         
+        except DatabaseError as e:
+            # Captura erros (ex: triggers)
+            error_message = str(e)
+            if '45000' in error_message:
+                try:
+                    error_message = error_message.split("MESSAGE_TEXT = '")[1].split("'")[0]
+                except:
+                    error_message = "Erro de banco de dados ao processar."
+            return Response({"error": error_message}, status=status.HTTP_400_BAD_REQUEST)
         except ProcessoEtapa.DoesNotExist:
              return Response({"error": "Etapa do processo não encontrada."}, status=404)
         except Exception as e:
             return Response({"error": f"Erro ao submeter: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 # ---
 # API 10: Listar "Meus Processos" (GET)
 # ---
@@ -339,53 +336,50 @@ class ProcessoListView(ListAPIView):
 # ---
 class EncaminharEtapaView(APIView):
     """
-    API genérica para avançar o fluxo de um processo (usada pela "Análise" e "Aprovação").
+    API genérica para avançar o fluxo, INCLUINDO finalizações.
     POST /api/etapa/encaminhar/
     """
     def post(self, request, *args, **kwargs):
         processo_etapa_id_atual = request.data.get('processo_etapa_id_atual')
-        proxima_etapa_relacao_id = request.data.get('proxima_etapa_relacao_id')
+        
+        # MUDANÇA: Torna o próximo passo opcional. Se não vier, será 'None'.
+        proxima_etapa_relacao_id = request.data.get('proxima_etapa_relacao_id', None) 
 
-        if not processo_etapa_id_atual or not proxima_etapa_relacao_id:
-            return Response({"error": "IDs da etapa atual e próxima são obrigatórios."}, status=status.HTTP_400_BAD_REQUEST)
+        # MUDANÇA: Verifica apenas a etapa atual
+        if not processo_etapa_id_atual:
+            return Response({"error": "ID da etapa atual é obrigatório."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             with transaction.atomic():
-                # 1. Atualiza a etapa ATUAL (ex: "Análise") para "Concluído"
-                etapa_atual = ProcessoEtapa.objects.get(processo_etapa_id=processo_etapa_id_atual)
-                etapa_atual.status_field = 'Concluído'
-                etapa_atual.save()
+                with connection.cursor() as cursor:
+                    # Passa 'None' para a procedure se for uma etapa final
+                    cursor.callproc(
+                        "sp_concluir_etapa", 
+                        [processo_etapa_id_atual, proxima_etapa_relacao_id]
+                    )
 
-                # 2. Encontra a PRÓXIMA etapa (ex: "Aprovação" ou "Recusa")
-                proxima_etapa = ProcessoEtapa.objects.get(
-                    processo=etapa_atual.processo,
-                    etapa_relacao_id=proxima_etapa_relacao_id
-                )
-                
-                # 3. Ativa a próxima etapa e atribui o responsável
-                proxima_etapa.status_field = 'Em Andamento'
-                
-                proximo_responsavel_tipo_id = proxima_etapa.etapa_relacao.responsavel.tipo_id
-                
-                primeiro_usuario_compativel = Usuarios.objects.filter(tipo_usuario_id=proximo_responsavel_tipo_id).first()
-                
-                if not primeiro_usuario_compativel:
-                    raise Exception(f"Nenhum usuário encontrado para o tipo de responsável ID: {proximo_responsavel_tipo_id}")
-
-                proxima_etapa.usuario = primeiro_usuario_compativel
-                proxima_etapa.save()
-
+                # Mensagem genérica de sucesso
                 return Response(
-                    {"message": "Etapa encaminhada com sucesso!", "next_etapa_id": proxima_etapa.processo_etapa_id},
+                    {"message": "Etapa processada com sucesso!"},
                     status=status.HTTP_200_OK
                 )
         
-        except ProcessoEtapa.DoesNotExist:
-             return Response({"error": "Etapa do processo não encontrada."}, status=404)
+        except DatabaseError as e:
+            # Captura erros do banco (ex: triggers de validação)
+            error_message = str(e)
+            if '45000' in error_message: # Erro sinalizado pelo seu trigger
+                try:
+                    error_message = error_message.split("MESSAGE_TEXT = '")[1].split("'")[0]
+                except:
+                    error_message = "Erro de banco de dados."
+            return Response({"error": error_message}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            # Captura erros do Python (ex: etapa não existe)
+            # MUDANÇA: Corrigida a indentação (removido 1 espaço)
+            if isinstance(e, ProcessoEtapa.DoesNotExist):
+                 return Response({"error": "Etapa do processo não encontrada."}, status=404)
             return Response({"error": f"Erro ao encaminhar: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# ---
+        
 # API 12: Submeter Formulário de Recusa (POST)
 # ---
 class RecusaSubmitView(APIView):
@@ -394,10 +388,7 @@ class RecusaSubmitView(APIView):
     POST /api/etapa/recusa/submit/
     """
     def post(self, request, *args, **kwargs):
-        # Dados do formulário
         justificativa = request.data.get('justificativa')
-        
-        # IDs de controle
         processo_etapa_id = request.data.get('processo_etapa_id')
         proximo_etapa_relacao_id = request.data.get('proximo_etapa_relacao_id')
 
@@ -406,95 +397,41 @@ class RecusaSubmitView(APIView):
 
         try:
             with transaction.atomic():
-                # 1. Salva na tabela 'recusa'
+                # 1. Salva na tabela 'recusa' (Correto)
                 Recusa.objects.create(
                     processo_etapa_id=processo_etapa_id,
                     justificativa=justificativa
                 )
 
-                # 2. Atualiza a etapa ATUAL ("Recusa") para "Concluído"
-                etapa_atual = ProcessoEtapa.objects.get(processo_etapa_id=processo_etapa_id)
-                etapa_atual.status_field = 'Concluído'
-                etapa_atual.save()
+                # --- LÓGICA MANUAL REMOVIDA ---
+                # (etapa_atual.save(), proxima_etapa.save(), processo_pai.save(), etc.)
 
-                # 3. Encontra a próxima etapa ("Conclusão")
-                proxima_etapa = ProcessoEtapa.objects.get(
-                    processo=etapa_atual.processo,
-                    etapa_relacao_id=proximo_etapa_relacao_id
-                )
+                # 2. Chama a procedure para avançar o fluxo
+                with connection.cursor() as cursor:
+                    cursor.callproc(
+                        "sp_concluir_etapa",
+                        [processo_etapa_id, proximo_etapa_relacao_id]
+                    )
                 
-                # 4. Ativa a próxima etapa ("Conclusão") e atribui o responsável
-                proxima_etapa.status_field = 'Em Andamento'
-                
-                proximo_responsavel_tipo_id = proxima_etapa.etapa_relacao.responsavel.tipo_id
-                primeiro_usuario_compativel = Usuarios.objects.filter(tipo_usuario_id=proximo_responsavel_tipo_id).first()
-                
-                if not primeiro_usuario_compativel:
-                    raise Exception(f"Nenhum usuário encontrado para o tipo de responsável ID: {proximo_responsavel_tipo_id}")
-
-                proxima_etapa.usuario = primeiro_usuario_compativel
-                proxima_etapa.save()
-
-                # 5. Opcional: Marcar o processo PAI como "Recusado"
-                processo_pai = etapa_atual.processo
-                processo_pai.status_field = 'Recusado'
-                processo_pai.save() 
-                # (Isso também vai disparar seu trigger tg_Processo_apagarSequencia)
+                # A procedure já cuidou de atualizar o status do Processo pai.
 
                 return Response(
                     {"message": "Processo recusado e encaminhado para conclusão."},
                     status=status.HTTP_200_OK
                 )
         
+        except DatabaseError as e:
+            error_message = str(e)
+            if '45000' in error_message:
+                try:
+                    error_message = error_message.split("MESSAGE_TEXT = '")[1].split("'")[0]
+                except:
+                    error_message = "Erro de banco de dados ao processar."
+            return Response({"error": error_message}, status=status.HTTP_400_BAD_REQUEST)
         except ProcessoEtapa.DoesNotExist:
              return Response({"error": "Etapa do processo não encontrada."}, status=404)
         except Exception as e:
             return Response({"error": f"Erro ao submeter recusa: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# ---
-# API 13: Concluir um Processo (POST)
-# ---
-class ProcessoConcluirView(APIView):
-    """
-    API para finalizar uma etapa de Conclusão e marcar o 
-    processo PAI como "Concluído".
-    POST /api/processo/concluir/
-    """
-    def post(self, request, *args, **kwargs):
-        # Recebe o ID da etapa atual (a etapa de "Conclusão")
-        processo_etapa_id = request.data.get('processo_etapa_id')
-
-        if not processo_etapa_id:
-            return Response({"error": "ID da etapa do processo é obrigatório."}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            with transaction.atomic():
-                # 1. Encontra a etapa atual (ex: "Conclusão")
-                etapa_atual = ProcessoEtapa.objects.get(processo_etapa_id=processo_etapa_id)
-                
-                # 2. Marca esta etapa como "Concluído"
-                etapa_atual.status_field = 'Concluído'
-                etapa_atual.save()
-
-                # 3. Encontra o processo PAI
-                processo_pai = etapa_atual.processo
-                
-                # 4. Marca o processo PAI como "Concluído"
-                processo_pai.status_field = 'Concluído'
-                processo_pai.save() 
-                
-                # (Isto irá disparar seu trigger 'tg_Processo_apagarSequencia' 
-                # e limpar as etapas "Não Iniciado")
-
-                return Response(
-                    {"message": "Processo concluído com sucesso!"},
-                    status=status.HTTP_200_OK
-                )
-        
-        except ProcessoEtapa.DoesNotExist:
-             return Response({"error": "Etapa do processo não encontrada."}, status=404)
-        except Exception as e:
-            return Response({"error": f"Erro ao concluir processo: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # ---
 # API 14: Submeter Formulário de Entrevista (POST)
@@ -522,40 +459,35 @@ class EntrevistaSubmitView(APIView):
         if serializer.is_valid():
             try:
                 with transaction.atomic():
-                    # 1. Salva na tabela 'entrevista'
+                    # 1. Salva na tabela 'entrevista' (Isto está correto)
                     serializer.save()
 
-                    # 2. Atualiza a etapa ATUAL ("Entrevista") para "Concluído"
-                    etapa_atual = ProcessoEtapa.objects.get(processo_etapa_id=processo_etapa_id)
-                    etapa_atual.status_field = 'Concluído'
-                    etapa_atual.save()
+                    # --- LÓGICA MANUAL REMOVIDA ---
+                    # (etapa_atual = ProcessoEtapa.objects.get(...))
+                    # (etapa_atual.status_field = 'Concluído'...)
+                    # (proxima_etapa = ProcessoEtapa.objects.get(...))
+                    # (proxima_etapa.usuario = primeiro_usuario_compativel...)
 
-                    # 3. Encontra a próxima etapa (ex: "Análise Entrevista")
-                    proxima_etapa = ProcessoEtapa.objects.get(
-                        processo=etapa_atual.processo,
-                        etapa_relacao_id=proximo_etapa_relacao_id
-                    )
-                    
-                    # 4. Atribui o novo responsável a esta etapa
-                    proxima_etapa.status_field = 'Em Andamento'
-                    proximo_responsavel_tipo_id = proxima_etapa.etapa_relacao.responsavel.tipo_id
-                    primeiro_usuario_compativel = Usuarios.objects.filter(tipo_usuario_id=proximo_responsavel_tipo_id).first()
-                    
-                    if not primeiro_usuario_compativel:
-                        raise Exception(f"Nenhum usuário encontrado para o tipo de responsável ID: {proximo_responsavel_tipo_id}")
-
-                    proxima_etapa.usuario = primeiro_usuario_compativel
-                    proxima_etapa.save()
+                    # --- NOVA LÓGICA ---
+                    # 2. Chama a stored procedure para fazer todo o resto
+                    with connection.cursor() as cursor:
+                        cursor.callproc(
+                            "sp_concluir_etapa",
+                            [processo_etapa_id, proximo_etapa_relacao_id]
+                        )
 
                     return Response(
-                        {"message": "Entrevista agendada com sucesso!", "next_etapa_id": proxima_etapa.processo_etapa_id},
+                        {"message": "Entrevista agendada com sucesso!"},
                         status=status.HTTP_200_OK
                     )
             
             except DatabaseError as e:
                 # Captura o erro do trigger (SQLSTATE 45000)
                 if '45000' in str(e):
-                    error_message = str(e).split("MESSAGE_TEXT = '")[1].split("'")[0]
+                    try:
+                        error_message = str(e).split("MESSAGE_TEXT = '")[1].split("'")[0]
+                    except:
+                        error_message = "Erro de banco de dados."
                     return Response({"error": error_message}, status=status.HTTP_400_BAD_REQUEST)
                 return Response({"error": f"Erro de banco de dados: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             except ProcessoEtapa.DoesNotExist:
@@ -591,40 +523,31 @@ class VisitacaoSubmitView(APIView):
         if serializer.is_valid():
             try:
                 with transaction.atomic():
-                    # 1. Salva na tabela 'visitacao'
+                    # 1. Salva na tabela 'visitacao' (Correto)
                     serializer.save()
 
-                    # 2. Atualiza a etapa ATUAL ("Visitação") para "Concluído"
-                    etapa_atual = ProcessoEtapa.objects.get(processo_etapa_id=processo_etapa_id)
-                    etapa_atual.status_field = 'Concluído'
-                    etapa_atual.save()
+                    # --- LÓGICA MANUAL REMOVIDA ---
+                    # (etapa_atual.save(), proxima_etapa.save(), etc.)
 
-                    # 3. Encontra a próxima etapa (ex: "Análise Visitação")
-                    proxima_etapa = ProcessoEtapa.objects.get(
-                        processo=etapa_atual.processo,
-                        etapa_relacao_id=proximo_etapa_relacao_id
-                    )
-                    
-                    # 4. Atribui o novo responsável a esta etapa
-                    proxima_etapa.status_field = 'Em Andamento'
-                    proximo_responsavel_tipo_id = proxima_etapa.etapa_relacao.responsavel.tipo_id
-                    primeiro_usuario_compativel = Usuarios.objects.filter(tipo_usuario_id=proximo_responsavel_tipo_id).first()
-                    
-                    if not primeiro_usuario_compativel:
-                        raise Exception(f"Nenhum usuário encontrado para o tipo de responsável ID: {proximo_responsavel_tipo_id}")
-
-                    proxima_etapa.usuario = primeiro_usuario_compativel
-                    proxima_etapa.save()
+                    # 2. Chama a procedure para avançar o fluxo
+                    with connection.cursor() as cursor:
+                        cursor.callproc(
+                            "sp_concluir_etapa",
+                            [processo_etapa_id, proximo_etapa_relacao_id]
+                        )
 
                     return Response(
-                        {"message": "Visitação agendada com sucesso!", "next_etapa_id": proxima_etapa.processo_etapa_id},
+                        {"message": "Visitação agendada com sucesso!"},
                         status=status.HTTP_200_OK
                     )
             
             except DatabaseError as e:
                 # Captura o erro do trigger (SQLSTATE 45000)
                 if '45000' in str(e):
-                    error_message = str(e).split("MESSAGE_TEXT = '")[1].split("'")[0]
+                    try:
+                        error_message = str(e).split("MESSAGE_TEXT = '")[1].split("'")[0]
+                    except:
+                         error_message = "Erro de banco de dados ao processar."
                     return Response({"error": error_message}, status=status.HTTP_400_BAD_REQUEST)
                 return Response({"error": f"Erro de banco de dados: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             except ProcessoEtapa.DoesNotExist:
@@ -633,3 +556,4 @@ class VisitacaoSubmitView(APIView):
                 return Response({"error": f"Erro ao submeter: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

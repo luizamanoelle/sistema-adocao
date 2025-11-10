@@ -206,7 +206,7 @@ class Solicitacao(models.Model):
     processo_etapa = models.ForeignKey(ProcessoEtapa, models.DO_NOTHING, db_column='processo_etapa')
     cpf = models.CharField(max_length=255)
     animal = models.ForeignKey(Animais, models.DO_NOTHING, db_column='animal')
-    comprovante_residencia = models.TextField(blank=True, null=True)
+    comprovante_residencia = models.BinaryField(blank=True, null=True)
 
     class Meta:
         managed = False

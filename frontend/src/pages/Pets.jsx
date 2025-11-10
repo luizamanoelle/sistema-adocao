@@ -72,7 +72,7 @@ function Pets() {
 
     // renderização com os pets cadastrados
     return (
-        <div className="bg-base-200 min-h-screen p-8">
+        <div className="bg-base-100 min-h-screen p-8">
             <div className="container mx-auto">
                 <h1 className="text-4xl font-bold text-center mb-10 text-primary">
                     Conheça nossos amigos

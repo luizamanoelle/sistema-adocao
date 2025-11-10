@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-// --- ÍCONES ---
+//icons 
 const IconPlus = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -14,30 +14,29 @@ const IconTrash = () => (
   </svg>
 );
 
-// --- COMPONENTE DE CADA PASSO (ATUALIZADO) ---
+//card pra cada passo 
 function PassoCard({ passo, index, todosPassos, etapasApi, tiposUsuarioApi, onUpdate, onRemove }) {
+  //lista os passos menos o atual p n apontar pra si mesmo
   const outrosPassos = todosPassos.filter(p => p.tempId !== passo.tempId);
 
+  //converte o id temporario em um numero de exibição pra etapa
   const getDisplayId = (tempId) => {
     const passoIndex = todosPassos.findIndex(p => p.tempId === tempId);
     return passoIndex + 1;
   };
 
-  // --- INÍCIO DA ATUALIZAÇÃO (LÓGICA DO NOME) ---
-  // A lógica agora é a mesma para todos os passos (incluindo o index 0).
-  // Ele busca o nome da etapa selecionada no dropdown.
+  //busca o nome da etapa selecionada pra mostrar
   const etapaObj = etapasApi.find(e => e.etapa_id == passo.etapaId);
   
-  // Se não encontrar (ex: API carregando), usa o nome do estado (ex: 'Início (Solicitação)')
+  //se não encontrar, usa o nome do estado (ex: 'Início (Solicitação)')
   const nomeExibido = etapaObj ? etapaObj.nome : passo.nomePasso;
-  // --- FIM DA ATUALIZAÇÃO ---
 
   return (
     <div className="card w-full bg-base-100 shadow-lg border border-base-300 relative">
       <div className="card-body p-6">
         <button
           type="button"
-          // O botão de deletar continua escondido apenas para o primeiro passo
+          //o botão de deletar continua escondido apenas para o primeiro passo chama onRemove quando clciado
           className={`btn btn-xs btn-circle btn-error btn-outline absolute top-2 right-2 ${index === 0 ? 'hidden' : ''}`}
           onClick={() => onRemove(passo.tempId)}
         >
@@ -49,16 +48,14 @@ function PassoCard({ passo, index, todosPassos, etapasApi, tiposUsuarioApi, onUp
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Etapa */}
+          {/* Etapa dropdown */}
           <div className="form-control">
             <label className="label"><span className="label-text">Etapa</span></label>
+            {/*qual etapa eh, ao mudar chama onupdate*/}
             <select
               className={`select select-bordered ${!passo.etapaId ? 'select-error' : ''}`}
               value={passo.etapaId}
               onChange={(e) => onUpdate(passo.tempId, 'etapaId', e.target.value)}
-              // --- MUDANÇA AQUI ---
-              // Removido: disabled={index === 0}
-              // Agora é editável
             >
               <option value="" disabled>Selecione</option>
               {etapasApi.map(etapa => (
@@ -67,16 +64,13 @@ function PassoCard({ passo, index, todosPassos, etapasApi, tiposUsuarioApi, onUp
             </select>
           </div>
 
-          {/* Responsável */}
+          {/* Responsável dropdown */}
           <div className="form-control">
             <label className="label"><span className="label-text">Responsável</span></label>
             <select
               className={`select select-bordered ${!passo.responsavelId ? 'select-error' : ''}`}
               value={passo.responsavelId}
               onChange={(e) => onUpdate(passo.tempId, 'responsavelId', e.target.value)}
-              // --- MUDANÇA AQUI ---
-              // Removido: disabled={index === 0}
-              // Agora é editável
             >
               <option value="" disabled>Selecione</option>
               {tiposUsuarioApi.map(tipo => (
@@ -99,7 +93,7 @@ function PassoCard({ passo, index, todosPassos, etapasApi, tiposUsuarioApi, onUp
             >
               <option value="">Nenhum (Fim do Fluxo)</option>
               {outrosPassos.map(p => {
-                // Tenta encontrar o nome da etapa para exibir no dropdown
+                //tenta encontrar o nome da etapa para exibir no dropdown
                 const etapaPasso = etapasApi.find(e => e.etapa_id == p.etapaId);
                 const nomePasso = etapaPasso ? etapaPasso.nome : p.nomePasso;
                 return (
@@ -121,7 +115,7 @@ function PassoCard({ passo, index, todosPassos, etapasApi, tiposUsuarioApi, onUp
             >
               <option value="">Nenhum (Sem Alternativa)</option>
               {outrosPassos.map(p => {
-                 // Tenta encontrar o nome da etapa para exibir no dropdown
+                 // tenta encontrar o nome da etapa para exibir no dropdown
                 const etapaPasso = etapasApi.find(e => e.etapa_id == p.etapaId);
                 const nomePasso = etapaPasso ? etapaPasso.nome : p.nomePasso;
                 return (
@@ -139,22 +133,23 @@ function PassoCard({ passo, index, todosPassos, etapasApi, tiposUsuarioApi, onUp
   );
 }
 
-// --- COMPONENTE PRINCIPAL (Nenhuma mudança necessária aqui) ---
+//controle e envio principal
 function TemplateCreator() {
   const [templateName, setTemplateName] = useState('');
-  const [passos, setPassos] = useState([]);
-  const [etapasApi, setEtapasApi] = useState([]);
+  const [passos, setPassos] = useState([]); //array de cada passo
+  const [etapasApi, setEtapasApi] = useState([]); //dados de apoio
   const [tiposUsuarioApi, setTiposUsuarioApi] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [debugJson, setDebugJson] = useState('');
+  const [debugJson, setDebugJson] = useState(''); //json de debug
 
   const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        //busca as etapas e os usuarios pra aparecer no dropdown
         const [etapasRes, tiposRes] = await Promise.all([
           axios.get(`${API_BASE_URL}/etapas/`),
           axios.get(`${API_BASE_URL}/tipos-usuario/`)
@@ -170,13 +165,11 @@ function TemplateCreator() {
   }, []);
 
   // Adicionar e remover passos
-  // A lógica de 'handleAddPasso' está CORRETA.
-  // Ela define os padrões (ID 1 e 2) para o primeiro passo.
-  // Como o PassoCard não está mais 'disabled', o usuário pode alterar se quiser.
   const handleAddPasso = () => {
+    //cria um novo passo
     const newPasso = {
-      tempId: crypto.randomUUID(),
-      nomePasso: 'Novo Passo', // Para passos > 0, isso será substituído pelo nome da etapa
+      tempId: crypto.randomUUID(), //gerar id temp
+      nomePasso: 'Novo Passo',  //agr quando escolhe ja vem com o nome real eh só de placeholder
       etapaId: '',
       responsavelId: '',
       proxId: null, 
@@ -187,9 +180,10 @@ function TemplateCreator() {
       newPasso.etapaId = '1'; // Padrão: Solicitação
       newPasso.responsavelId = '2'; // Padrão: Adotante
     }
-    setPassos([...passos, newPasso]);
+    setPassos([...passos, newPasso]); //adiciona
   };
-
+ 
+  //se o passo foi removido remove ele de referencias tb
   const handleRemovePasso = (tempId) => {
     const novosPassos = passos.filter(p => p.tempId !== tempId);
     const passosAtualizados = novosPassos.map(p => {
@@ -204,7 +198,7 @@ function TemplateCreator() {
     setPassos(passos.map(p => p.tempId === tempId ? { ...p, [field]: value } : p));
   };
 
-  // SUBMISSÃO (Nenhuma mudança necessária)
+  // SUBMISSÃO
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -212,6 +206,7 @@ function TemplateCreator() {
     setSuccess(null);
     setDebugJson('');
 
+    //valida se da pra criar mesmo
     if (!templateName.trim()) {
       setError("O nome do template é obrigatório.");
       setLoading(false);
@@ -233,11 +228,13 @@ function TemplateCreator() {
       }
     }
     
+    //converte o idtemp pra indices numericos
     const uuidParaTempId = new Map();
     passos.forEach((passo, index) => {
       uuidParaTempId.set(passo.tempId, index + 1);
     });
 
+    //cria o json que vai enviar pro back
     const jsonParaBackend = passos.map((passo, index) => {
       const proxTempId = passo.proxId ? (uuidParaTempId.get(passo.proxId) || null) : null;
       const alternativoTempId = passo.alternativoId ? (uuidParaTempId.get(passo.alternativoId) || null) : null;
@@ -251,15 +248,18 @@ function TemplateCreator() {
       };
     });
    
+    //debug
     console.log("JSON Gerado para enviar:", jsonParaBackend);
     setDebugJson(JSON.stringify(jsonParaBackend, null, 2));
 
+    //banca o json
     try {
       const response = await axios.post(`${API_BASE_URL}/templates/create/`, {
         nome: templateName,
         fluxo_json: jsonParaBackend
       });
 
+      //se deu certo limpa o forms
       setSuccess(`Template "${response.data.nome}" (ID: ${response.data.template_id}) criado com sucesso!`);
       setTemplateName('');
       setPassos([]);
@@ -272,7 +272,7 @@ function TemplateCreator() {
     }
   };
 
-  // --- RENDERIZAÇÃO (Nenhuma mudança necessária) ---
+  //forms visual
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-5xl">
       <h1 className="text-3xl font-bold mb-6">Criar Novo Template</h1>

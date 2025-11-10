@@ -21,30 +21,53 @@ from .models import (
 # CAMPO SERIALIZER CUSTOMIZADO PARA FOTOS (BLOB -> Base64)
 # ---
 class FotoSerializerField(serializers.Field):
-    """Converte BLOB (bytes) em Base64 para exibir no frontend"""
     def to_representation(self, value):
-        if value:
+        if not value:
+            return None
+
+        try:
+            # 🔹 Garante que value é bytes
+            if isinstance(value, memoryview):
+                value = value.tobytes()
+            elif isinstance(value, bytearray):
+                value = bytes(value)
+            elif isinstance(value, str):
+                # Se vier como string tipo "b'%PDF-1.7...'", limpa
+                value = value.encode('latin1')
+
+            # 🔹 Detecta tipo (sem erro com bytes mistos)
+            mime_type = "application/octet-stream"
             try:
-                # Converte o blob (bytes) para Base64
-                encoded = base64.b64encode(value).decode('utf-8')
-                # Retorna no formato que o <img src=""> entende
-                return f"data:image/jpeg;base64,{encoded}"
+                header = value[:1024]  # Lê os primeiros bytes
+                if b"%PDF" in header:
+                    mime_type = "application/pdf"
+                elif header.startswith(b"\xff\xd8\xff"):
+                    mime_type = "image/jpeg"
+                elif header.startswith(b"\x89PNG\r\n\x1a\n"):
+                    mime_type = "image/png"
+                elif header.startswith(b"GIF87a") or header.startswith(b"GIF89a"):
+                    mime_type = "image/gif"
             except Exception as e:
-                print("Erro ao converter imagem:", e)
-                return None
-        return None
+                print("Erro detectando MIME:", e)
+
+            # 🔹 Converte para Base64
+            encoded = base64.b64encode(value).decode('utf-8')
+            print(">>> MIME:", mime_type, "| primeiros bytes:", value[:10])
+
+            return f"data:{mime_type};base64,{encoded}"
+
+        except Exception as e:
+            print("Erro ao converter arquivo:", e)
+            return None
 
     def to_internal_value(self, data):
-        """
-        Converte uma imagem em Base64 vinda do frontend para bytes (para salvar no banco)
-        """
         try:
-            if data.startswith('data:image'):
-                header, encoded = data.split(',', 1)
+            if ',' in data:
+                _, encoded = data.split(',', 1)
                 return base64.b64decode(encoded)
             return None
         except Exception as e:
-            print("Erro ao decodificar imagem:", e)
+            print("Erro ao decodificar arquivo:", e)
             return None
 
 

@@ -16,9 +16,8 @@ from core.views import (
     ProcessoListView,
     EncaminharEtapaView,
     RecusaSubmitView,
-    ProcessoConcluirView,
-    EntrevistaSubmitView, # <-- IMPORTAR
-    VisitacaoSubmitView  # <-- IMPORTAR
+    EntrevistaSubmitView, 
+    VisitacaoSubmitView,  
 )
 
 urlpatterns = [
@@ -58,8 +57,6 @@ urlpatterns = [
     path('api/etapa/encaminhar/', EncaminharEtapaView.as_view(), name='etapa-encaminhar'),
 
     path('api/etapa/recusa/submit/', RecusaSubmitView.as_view(), name='recusa-submit'),
-
-    path('api/processo/concluir/', ProcessoConcluirView.as_view(), name='processo-concluir'),
 
     # --- ADICIONAR AS NOVAS ROTAS ---
     path('api/etapa/entrevista/submit/', EntrevistaSubmitView.as_view(), name='entrevista-submit'),
