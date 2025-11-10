@@ -17,16 +17,14 @@ from .models import (
     Visitacao
 )
 
-# ---
-# CAMPO SERIALIZER CUSTOMIZADO PARA FOTOS (BLOB -> Base64)
-# ---
+#converter as fotos/comprovante
 class FotoSerializerField(serializers.Field):
     def to_representation(self, value):
         if not value:
             return None
 
         try:
-            # 🔹 Garante que value é bytes
+            # Garante que value é bytes
             if isinstance(value, memoryview):
                 value = value.tobytes()
             elif isinstance(value, bytearray):
@@ -35,7 +33,7 @@ class FotoSerializerField(serializers.Field):
                 # Se vier como string tipo "b'%PDF-1.7...'", limpa
                 value = value.encode('latin1')
 
-            # 🔹 Detecta tipo (sem erro com bytes mistos)
+            # Detecta tipo 
             mime_type = "application/octet-stream"
             try:
                 header = value[:1024]  # Lê os primeiros bytes
@@ -50,7 +48,7 @@ class FotoSerializerField(serializers.Field):
             except Exception as e:
                 print("Erro detectando MIME:", e)
 
-            # 🔹 Converte para Base64
+            # converte para Base64
             encoded = base64.b64encode(value).decode('utf-8')
             print(">>> MIME:", mime_type, "| primeiros bytes:", value[:10])
 
@@ -62,6 +60,7 @@ class FotoSerializerField(serializers.Field):
 
     def to_internal_value(self, data):
         try:
+            #base64 -> bytes, decodifica a parte depois da virgula
             if ',' in data:
                 _, encoded = data.split(',', 1)
                 return base64.b64decode(encoded)
@@ -70,10 +69,7 @@ class FotoSerializerField(serializers.Field):
             print("Erro ao decodificar arquivo:", e)
             return None
 
-
-# ---
-# SERIALIZERS DE APOIO
-# ---
+#pra mostrar os animais, usa o fotoserializer pra conseguir mostrar a foto na pagina
 class AnimaisSerializer(serializers.ModelSerializer):
     foto = FotoSerializerField(required=False)
 
@@ -81,6 +77,7 @@ class AnimaisSerializer(serializers.ModelSerializer):
         model = Animais
         fields = ['animal_id', 'nome', 'sexo', 'idade', 'tipo', 'foto']
 
+#de apoio
 class EtapasSerializer(serializers.ModelSerializer):
     class Meta:
         model = Etapas
@@ -91,42 +88,38 @@ class TipoUsuarioSerializer(serializers.ModelSerializer):
         model = TipoUsuario
         fields = '__all__'
 
-# ---
-# SERIALIZER DE LOGIN (COM A CORREÇÃO DO 'tipo_usuario')
-# ---
+#login
 class UsuariosSerializer(serializers.ModelSerializer):
+    #mostra tudo que tem na tabela de tipo usuario
     tipo_usuario_detalhes = TipoUsuarioSerializer(source='tipo_usuario', read_only=True)
+    #pega o id q define o tipo
     tipo_usuario = serializers.ReadOnlyField(source='tipo_usuario.tipo_id')
 
     class Meta:
         model = Usuarios
         fields = ('usuario_id', 'nome', 'idade', 'email', 'tipo_usuario', 'tipo_usuario_detalhes')
 
-# ---
-# SERIALIZER DE TEMPLATES (COM A REGRA DE NEGÓCIO)
-# ---
+# pra exibir o template
 class TemplateSerializer(serializers.ModelSerializer):
+    #pega o usuario responsavel pela primeira etapa (o que iniciou ele)
     primeira_etapa_responsavel_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Template
         fields = ('template_id', 'nome', 'primeira_etapa_responsavel_id')
 
+#pra saber quem pode iniciar esse processo
     def get_primeira_etapa_responsavel_id(self, obj):
         try:
+            #busca todas as etapas que tem nesse template
             primeira_etapa = EtapaRelacao.objects.filter(
                 template=obj
-            ).latest('etapa_relacao_id')
+            ).latest('etapa_relacao_id') #pega  amais recente (que eh a primeira)
             return primeira_etapa.responsavel_id # Acesso direto ao ID
         except EtapaRelacao.DoesNotExist:
             return None
 
-
-# ---
-# SERIALIZERS PARA A PÁGINA DE ETAPA (DETALHES)
-# ---
-
-# Serializer para a tabela 'solicitacao' (read-only)
+# Mostra os dados da solicitação
 class SolicitacaoSerializer(serializers.ModelSerializer):
     comprovante_residencia = FotoSerializerField(read_only=True)
     animal = AnimaisSerializer(read_only=True)
@@ -135,62 +128,48 @@ class SolicitacaoSerializer(serializers.ModelSerializer):
         model = Solicitacao
         fields = ['solicitacao_id', 'animal', 'cpf', 'comprovante_residencia'] 
 
-# Serializer para salvar a Recusa (write-only)
+# Enviar recusa
 class RecusaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recusa
         fields = ['justificativa', 'processo_etapa']
 
-class EntrevistaSerializer(serializers.ModelSerializer):
-    # data_field = serializers.DateField(source='data_') <-- LINHA REMOVIDA
-    
+class EntrevistaSerializer(serializers.ModelSerializer):  
     class Meta:
         model = Entrevista
         fields = ['data_field', 'observacoes', 'processo_etapa']
 
-# Serializer para salvar a Visitacao (write-only)
 class VisitacaoSerializer(serializers.ModelSerializer):
-    # data_field = serializers.DateField(source='data_') <-- LINHA REMOVIDA
-
     class Meta:
         model = Visitacao
         fields = ['data_field', 'endereco', 'processo_etapa']
 
-# ---
-# CORREÇÃO: ReadOnly Serializers para a "Análise Genérica"
-# ---
+#leitura dos dados da entrevista (usado depois na analise)
 class EntrevistaReadOnlySerializer(serializers.ModelSerializer):
-    """
-    Serializer de LEITURA para a Entrevista. 
-    Usado para mostrar os dados na etapa de Análise.
-    """
-    # data_field = serializers.DateField(source='data_') <-- LINHA REMOVIDA
     class Meta:
         model = Entrevista
         fields = ['data_field', 'observacoes']
 
+#leitura dos dados da visitação (usado depois na analise)
 class VisitacaoReadOnlySerializer(serializers.ModelSerializer):
-    """
-    Serializer de LEITURA para a Visitação.
-    Usado para mostrar os dados na etapa de Análise.
-    """
-    # data_field = serializers.DateField(source='data_') <-- LINHA REMOVIDA
     class Meta:
         model = Visitacao
         fields = ['data_field', 'endereco']
 
-
+#só pra mostrar o basico de uma relação com id e etapa 
 class EtapaRelacaoSimplesSerializer(serializers.ModelSerializer):
     etapa = EtapasSerializer(read_only=True) 
     class Meta:
         model = EtapaRelacao
         fields = ['etapa_relacao_id', 'etapa']
 
+#não foi usado...
 class ValidacaoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Validacao
         fields = ['validacao_id', 'descricao']
 
+#mostra tudo que uma etapa tem vinculado a ela
 class EtapaRelacaoDetalhadaSerializer(serializers.ModelSerializer):
     etapa = EtapasSerializer(read_only=True)
     responsavel = TipoUsuarioSerializer(read_only=True)
@@ -202,13 +181,13 @@ class EtapaRelacaoDetalhadaSerializer(serializers.ModelSerializer):
         fields = ['etapa_relacao_id', 'etapa', 'responsavel', 'proximo', 'alternativo']
 
 
-# Serializer principal da página de detalhes da etapa
+# mostra tudo da etapa atual, o usuario que executa e quem solicitou
 class ProcessoEtapaDetalhadoSerializer(serializers.ModelSerializer):
     etapa_relacao = EtapaRelacaoDetalhadaSerializer(read_only=True)
     usuario = UsuariosSerializer(read_only=True)
     solicitante = UsuariosSerializer(source='processo.usuario', read_only=True)
     
-    # Adiciona os dados dos formulários de etapas anteriores
+    # Adiciona os dados dos formulários de etapas anteriores (usar na analise)
     dados_solicitacao = serializers.SerializerMethodField()
     dados_entrevista = serializers.SerializerMethodField()
     dados_visitacao = serializers.SerializerMethodField()
@@ -240,7 +219,6 @@ class ProcessoEtapaDetalhadoSerializer(serializers.ModelSerializer):
     def get_dados_entrevista(self, obj):
         try:
             entrevista = Entrevista.objects.get(processo_etapa__processo=obj.processo)
-            # Usa o ReadOnlySerializer
             return EntrevistaReadOnlySerializer(entrevista).data
         except Entrevista.DoesNotExist:
             return None
@@ -251,7 +229,6 @@ class ProcessoEtapaDetalhadoSerializer(serializers.ModelSerializer):
     def get_dados_visitacao(self, obj):
         try:
             visitacao = Visitacao.objects.get(processo_etapa__processo=obj.processo)
-            # Usa o ReadOnlySerializer
             return VisitacaoReadOnlySerializer(visitacao).data
         except Visitacao.DoesNotExist:
             return None
@@ -263,6 +240,8 @@ class ProcessoEtapaDetalhadoSerializer(serializers.ModelSerializer):
 # ---
 # SERIALIZERS PARA A PÁGINA "MEUS PROCESSOS"
 # ---
+
+#mostra o resumo simples de cada etapa
 class ProcessoEtapaSimplesSerializer(serializers.ModelSerializer):
     etapa_nome = serializers.CharField(source='etapa_relacao.etapa.nome')
     usuario_nome = serializers.CharField(source='usuario.nome', allow_null=True)
@@ -271,6 +250,7 @@ class ProcessoEtapaSimplesSerializer(serializers.ModelSerializer):
         model = ProcessoEtapa
         fields = ['processo_etapa_id', 'etapa_nome', 'usuario_nome', 'status_field']
 
+#resumo atual do processo
 class ProcessoListSerializer(serializers.ModelSerializer):
     template_nome = serializers.CharField(source='template.nome')
     etapa_atual = serializers.SerializerMethodField()
@@ -280,6 +260,7 @@ class ProcessoListSerializer(serializers.ModelSerializer):
         model = Processo
         fields = ['processo_id', 'template_nome', 'status_field', 'usuario', 'etapa_atual']
 
+#busca no banco a etapa "em andamento" do processo atual pra mostrar onde ta
     def get_etapa_atual(self, obj):
         try:
             etapa = ProcessoEtapa.objects.get(processo=obj, status_field='Em Andamento')

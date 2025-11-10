@@ -1,5 +1,5 @@
 from django.contrib import admin
-# Importa todos os modelos que você criou no models.py
+# Importa todos os modelos do models
 from .models import (
     Animais,
     Entrevista,
@@ -16,8 +16,7 @@ from .models import (
     Visitacao
 )
 
-# "Registra" cada modelo no site de administração
-# Você pode registrar todos ou apenas os que quiser gerenciar
+# Registra cada modelo no site de administração
 admin.site.register(Animais)
 admin.site.register(Entrevista)
 admin.site.register(EtapaRelacao)
