@@ -110,13 +110,6 @@ create table recusa (
 );
 
 
-create table validacao (
-	validacao_id int PRIMARY KEY AUTO_INCREMENT,
-    descricao varchar(255),
-    etapa_relacao int not null,
-	FOREIGN KEY (etapa_relacao) REFERENCES Etapa_Relacao (etapa_relacao_id)
-);
-
 set session max_sp_recursion_depth = 255; 
 
 insert into Etapas(nome) values ("Solicitação"), ("Análise"), ("Entrevista"), ("Visitação"), ("Aprovação"), ("Recusa"), ("Cancelamento"), ("Conclusão");
