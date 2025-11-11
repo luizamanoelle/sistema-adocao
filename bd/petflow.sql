@@ -7,7 +7,7 @@ create table Animais(
     nome varchar(255),
     sexo char(1),
     idade int,
-	foto blob,
+	foto longblob,
     tipo varchar(10)
 );
 
@@ -81,7 +81,7 @@ create table solicitacao (
     processo_etapa int not null,
     cpf varchar(255) not null,
     animal int not null,
-    comprovante_residencia blob,
+    comprovante_residencia longblob,
     FOREIGN KEY (animal) REFERENCES Animais (animal_id),
     FOREIGN KEY(processo_etapa) REFERENCES Processo_Etapa (processo_etapa_id) ON DELETE CASCADE
 );
@@ -109,13 +109,21 @@ create table recusa (
 	FOREIGN KEY(processo_etapa) REFERENCES Processo_Etapa (processo_etapa_id) ON DELETE CASCADE
 );
 
-
 set session max_sp_recursion_depth = 255; 
 
 insert into Etapas(nome) values ("Solicitação"), ("Análise"), ("Entrevista"), ("Visitação"), ("Aprovação"), ("Recusa"), ("Cancelamento"), ("Conclusão");
 insert into Tipo_Usuario(categoria) values ("Administrador"), ("Adotante"), ("Voluntário");
 
-ALTER TABLE solicitacao
-MODIFY COLUMN comprovante_residencia LONGBLOB;
+insert into Usuarios (nome, idade, email, senha, tipo_usuario) values
+('Admin', 35, 'admin@petflow.com', 'admin123', 1),
+('Leo Adotante', 28, 'leo@email.com', 'leo123', 2),
+('Isa Voluntaria', 40, 'isa@petflow.com', 'isa123', 3),
+('Luma Voluntario', 30, 'luma@petflow.com', 'luma123', 3);
 
-ALTER TABLE Animais MODIFY foto LONGBLOB;
+show variables like 'secure_file_priv';
+-- importante alterar aq o arquivo de imagem!!!
+insert into Animais (nome, sexo, idade, foto, tipo) values
+('Max', 'M', 3, LOAD_FILE('C://ProgramData//MySQL//MySQL Server 8.0//Uploads//77fe5dacff00a4f7481272e29e63d737.jpg'), 'Cachorro'),
+('Mimi', 'F', 1, LOAD_FILE('C://ProgramData//MySQL//MySQL Server 8.0//Uploads//8623521.jpg'), 'Gato'),
+('Bella', 'F', 5, LOAD_FILE('C://ProgramData//MySQL//MySQL Server 8.0//Uploads//77fe5dacff00a4f7481272e29e63d737.jpg'), 'Cachorro'),
+('Félix', 'M', 2, LOAD_FILE('C://ProgramData//MySQL//MySQL Server 8.0//Uploads//8623079.jpg'), 'Gato');

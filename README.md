@@ -18,9 +18,11 @@ O sistema permite:
 ### Frontend
 - React + Vite + TailwindCSS + DaisyUI (JS)
 
-### Backend ?
+### Backend 
 - Django + Python
 ---
+### Banco de dados
+- MySQL 
 
 ##  Como Rodar o Projeto
 
@@ -63,10 +65,18 @@ O sistema permite:
    python manage.py runserver
 
 
+OBS: TALVEZ PRECISE INSTALAR ISSO AQUI TAMBÉM
+```bash
+   pip install cryptography
+```
 OBS: DENTRO DA PASTA BACKEND CRIE O ARQUIVO .ENV E COLE ISSO:
-
+```bash
 DB_NAME=petflow
 DB_USER=root
 DB_PASSWORD=minha_senha_segura
 DB_HOST=localhost
 DB_PORT=3306
+```
+PS: SE DER ERRO NO ENV INSIRA MANUALMENTE NO SETTINGS
+```bash
+\sistema-adocao\backend\petflow\settings.py
