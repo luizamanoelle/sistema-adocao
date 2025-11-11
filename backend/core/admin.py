@@ -30,3 +30,4 @@ admin.site.register(TipoUsuario)
 admin.site.register(Usuarios)
 admin.site.register(Validacao)
 admin.site.register(Visitacao)
+

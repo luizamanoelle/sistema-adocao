@@ -270,3 +270,4 @@ class ProcessoListSerializer(serializers.ModelSerializer):
         except ProcessoEtapa.MultipleObjectsReturned:
             etapa = ProcessoEtapa.objects.filter(processo=obj, status_field='Em Andamento').latest('processo_etapa_id')
             return ProcessoEtapaSimplesSerializer(etapa).data
+        

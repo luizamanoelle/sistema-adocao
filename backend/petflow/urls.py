@@ -78,4 +78,5 @@ urlpatterns = [
     # POST /api/etapa/visitacao/submit
     # submete os dados de visitacao
     path('api/etapa/visitacao/submit/', VisitacaoSubmitView.as_view(), name='visitacao-submit'),
+    
 ]
